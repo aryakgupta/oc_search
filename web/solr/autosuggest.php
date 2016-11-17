@@ -1,5 +1,5 @@
 <?php
-//error_reporting(0);
+error_reporting(0);
 require_once(dirname(__FILE__) . '/solrConfig.php');
 require_once(dirname(__FILE__) . '/classes/BharatAutoSearch.class.php');
 $obj = new BharatAutoSearch();

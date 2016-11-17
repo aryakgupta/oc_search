@@ -42,13 +42,10 @@ public function getSuggestionResult($searchParam=array())
 		if($this->solr->ping())
 			{
 				
-				$data_type='';
+				$data_type = "Product";	
 				if(isset($searchParam["data_type"])){
 					$data_type = strip_tags($searchParam["data_type"]);	
-				}
-				else{
-					$data_type = "Product";	
-				}					
+				}								
 
 				if (isset($searchParam["q"])){
 					$query = strip_tags($searchParam["q"]);	
@@ -57,6 +54,11 @@ public function getSuggestionResult($searchParam=array())
 					$query = "A";	
 				}		
 			$query=$this->stripallslashes($query);
+				$type =0;
+				if(isset($searchParam["type"])){
+					$type = intval(strip_tags($searchParam["type"]));	
+				}
+				
 				
 switch ($data_type){
 
@@ -64,18 +66,18 @@ case "Product":
 		$arr = explode (" ", $query);
 		$tmpQuery = "";
 		foreach ($arr as $key=>$val){
-			$tmpQuery .= "name2:(\"". $val . "\") AND ";	
+			$tmpQuery .= 'name2:("'. $this->stripallslashes($val) . '") AND ';	
 
 		}
 		$tmpQuery = preg_replace ('/( AND )$/', "", $tmpQuery);
 		$tmpQuery = "(" . $tmpQuery . ")";		
 		
-		$query1 = "(name1:(\"" . $query . "\") OR ".$tmpQuery ;
+		$query1 = '(name1:("' . $this->stripallslashes($query) . '") OR '.$tmpQuery ;
 		$query1 .= " )";
 	
 		
 		
-		$query=' (' . $query1.'  AND  (data_type:"Product" OR data_type:"Brand"^999.9 OR data_type:"Model"^77.1 OR data_type:"leaf_category"^3.9 OR data_type:"sub_category"^5.9 OR data_type:"root_category"^46.9))';
+		$query=' (' . $query1.'  AND  (data_type:"category"^99999999.9 OR data_type:"Brand"^7777777.7  OR data_type:"searchlogs"^5566655))';
      	break;
 		
 		default:
@@ -91,13 +93,12 @@ case "Product":
 		$query1 .= " )";
 		
 		
-		$query=' (' . $query1.'  AND  (data_type:"Product" OR data_type:"Brand" OR data_type:"Model"))';
+		$query=' (' . $query1.'  AND  (data_type:"category"^99999999.9 OR data_type:"Brand"^7777777.7  OR data_type:"searchlogs"^5566655))';
 		
 }
 
 	$fl='*';
 	$options =array('facet' => 'true', 'facet.field' =>"data_type", 'facet.limit' => '20', 'facet.mincount' => '1', 'facet.sort' => 'true', 'fl' => '*,score'); 
-
 
 	if(isset($searchParam["start"]) && $searchParam["start"]!=""){
 			$start=$searchParam["start"];}
@@ -108,7 +109,7 @@ case "Product":
 		if($limit>10){
 			$limit=10;
 		}
-		
+	
 		$result = $this->solr->search($query, $start, $limit,$options);	
 		$found = $result->response->numFound;
 		$countheadline=array();

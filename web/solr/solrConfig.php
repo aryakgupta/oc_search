@@ -1,6 +1,7 @@
 <?php
-define('SOLRSERVERIP', '52.74.73.206'); 
-define('SOLRPORT', '8084');
+//define('SOLRSERVERIP', '52.74.73.206'); 
+define('SOLRSERVERIP', 'localhost'); 
+define('SOLRPORT', '8083');
 define('PRODICTSEARCH', 'solr/products_details'); 
 define('PRODICTAUTOSEARCH', 'solr/autosuggest'); 
 define('TRENDINGSEARCH', 'solr/trendingsearch');

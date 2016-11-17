@@ -20,6 +20,7 @@ class BharatSearch {
     private $fqitems;
 	private $spellparams=array();
 	private $categorylist=array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft');
+	
     public function __construct() {
 
         require_once(dirname(__FILE__) . '/../SolrPhpClient/Apache/Solr/Service.php');
@@ -32,7 +33,17 @@ class BharatSearch {
     public function __desctruct() {
         $this->unsetsolr();
     }
-
+private function spell_correction($string){
+	
+		$string = str_replace("men", "Mens", $string);
+		$string = str_replace("boy", "Mens", $string);
+		$string = str_replace("boys", "Mens", $string);
+        $string = str_replace("womens", "Women", $string);
+        $string = str_replace("girls", "Women", $string);
+		$string = str_replace("girl", "Women", $string);
+		$string = str_replace("watch", "Watches", $string);
+        return $string;
+}
     private function stripallslashes($string = "") {
 
         while (strchr($string, '\\')) {
@@ -51,7 +62,81 @@ class BharatSearch {
         $string = urldecode($string);
         return strip_tags($string);
     }
-
+private function querySegmentation($queryString =  null){ 
+ 
+ 
+//$queryString = " tops for girls";
+$params=array();
+$params['is_only_facet'] = 'yes';
+$produt_data = $this->getResults($params);
+$result= (array)json_decode($produt_data);
+$fcat_rootcat=array();
+$fcat_subcat=array();
+$fcat_leafcat=array();
+$fcat_brand=array();
+$fcat_model=array();	   
+foreach($result['facet_data']->root_cat_name_ft as $facetname => $valcount){	
+		
+		array_push($fcat_rootcat, trim(strtolower($facetname)));		
+}
+foreach($result['facet_data']->sub_cat_name_ft as $facetname => $valcount){	
+			
+		array_push($fcat_subcat, trim(strtolower($facetname)));		
+}
+foreach($result['facet_data']->leaf_cat_name_ft as $facetname => $valcount){	
+		
+		array_push($fcat_leafcat, trim(strtolower($facetname)));		
+}
+foreach($result['facet_data']->model_ft as $facetname => $valcount){	
+		
+		array_push($fcat_model, trim(strtolower($facetname)));		
+}
+foreach($result['facet_data']->brandname_ft as $facetname => $valcount){	
+		
+		array_push($fcat_brand, trim(strtolower($facetname)));		
+}
+		$queryString=$this->spell_correction($queryString);
+    	$strArr = explode(" ", trim(urldecode($queryString)));
+		
+        $strArr	= array_map('strtolower', $strArr);
+		
+		
+	$j = 0;
+	foreach($strArr as $key=>$value){
+		
+	   $count =  count($strArr) - ($j );
+	   for($i =$count;  $i > 0; $i-- ){
+	        $search_text = implode(" ", array_slice($strArr, $j, $i)); //print $search_text;  print '<br/>';
+                $search_text = rtrim($search_text, ','); // remove malviyaa nager, like error
+				
+				
+	       if( in_array($search_text, $fcat_rootcat) ){
+			   
+		      $keywords['root_cat_name_ft'][]= ucwords($search_text);  //print $search_text;  print '<br/>';
+			  
+			 
+	       }
+		   if( in_array($search_text, $fcat_subcat) ){
+			
+		      $keywords['sub_cat_name_ft'][]= ucwords($search_text);  //print $search_text;  print '<br/>';
+	       }
+		   
+		   if( in_array($search_text, $fcat_leafcat) ){
+		      $keywords['leaf_cat_name_ft'][]= ucwords($search_text);  //print $search_text;  print '<br/>';
+	       }
+	       if( in_array($search_text, $fcat_model) ){
+		      $keywords['model_ft'][]= ucwords($search_text);
+	       }
+		   if( in_array($search_text, $fcat_brand) ){
+		      $keywords['brandname_ft'][]= ucwords($search_text);
+	       }
+	   }
+	$j++;
+	} 
+	
+    return (!empty($keywords)) ? $keywords : false;           
+	
+}
     public function getResults($searchParams = array()) {
 
         try {
@@ -73,8 +158,61 @@ class BharatSearch {
                 }
 
                 if (isset($searchParams['q']) && $searchParams['q'] != '') {
-
-                    $query = urldecode($searchParams['q']);
+				
+				
+					
+				 $keywords =  $this->querySegmentation($searchParams['q']);	
+					 if(!empty($keywords)){  
+							 
+						if(!empty($keywords['root_cat_name_ft'])){
+							$root_cat_query = array();
+							foreach( $keywords['root_cat_name_ft'] as $key => $cat){ 
+								$root_cat_query[] = "   category:(".$cat.")";
+								}
+								$keyword_query .= " AND (".implode(" OR ", $root_cat_query)." )" ;
+								
+						}
+						if(!empty($keywords['sub_cat_name_ft'])){
+							$scat_query = array() ;  
+							foreach( $keywords['sub_cat_name_ft'] as $key => $category){ 
+							$scat_query[] = "   category:(".$category.")";
+							}
+							$keyword_query .= " AND (".implode(" OR ", $scat_query)." )" ;
+							
+						}  
+						if(!empty($keywords['leaf_cat_name_ft'])){
+							$lcat_query = array() ;  
+							foreach( $keywords['leaf_cat_name_ft'] as $key => $category){ 
+							$lcat_query[] = "   category:(".$category.")";
+							}
+							/*if(!empty($keywords['sub_cat_name_ft'])){
+								$keyword_query .= " OR (".implode(" OR ", $lcat_query)." )" ;
+							}else{
+								$keyword_query .= " AND (".implode(" OR ", $lcat_query)." )" ;
+							}*/
+							$keyword_query .= " AND (".implode(" OR ", $lcat_query)." )" ;
+							
+							
+						} 
+						
+						if(!empty($keywords['brandname_ft']) ){
+							$lcat_query = array() ;  
+							foreach( $keywords['brandname_ft'] as $key => $category){ 
+							$lcat_query[] = "   brandname:(\"".$category."\") ";
+							}
+							$keyword_query .= " AND (".implode(" OR ", $lcat_query)." )" ;
+						} 
+						if(!empty($keywords['model_ft'])){
+							$cat_query = array() ;  
+							foreach( $keywords['model_ft'] as $key => $category){ 
+							$cat_query[] = "   model:(\"".$category."\") ";
+							}
+							$keyword_query .= " AND (".implode(" OR ", $cat_query)." )" ;
+						}   						
+                
+					}	
+					
+                   /* $query = urldecode($searchParams['q']);
                     $arr = explode(" ", $query);
                     $tmpQuery = "";
                     foreach ($arr as $key => $val) {
@@ -91,17 +229,33 @@ class BharatSearch {
                     
 
                   
+				  
 
-		$this->fq.=' AND (' . $query1;
-		$this->fq.=' OR product_name:("' . $this->stripallslashes($searchParams['q']) . '")^9988999.9';
-		$this->fq.=' OR model:('.$this->stripallslashes($searchParams['q']).')';		
-		$this->fq.=' OR brandname:('.$this->stripallslashes($searchParams['q']).')';
-		$this->fq.=' OR (root_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
-		$this->fq.=' OR (sub_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
-		$this->fq.=' OR (leaf_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
-		$this->fq.=' )';
+					$this->fq.=' AND (' . $query1;*/
+					
+					
+					$this->fq.=' AND (nametight:(' . $this->stripallslashes($searchParams['q']) . ')^99.9';
+					$this->fq.=' OR product_name:(' . $this->stripallslashes($searchParams['q']) . ')^1.4';
+									
+					//$this->fq.=' OR model:('.$this->stripallslashes($searchParams['q']).')';		
+					//$this->fq.=' OR brandname:('.$this->stripallslashes($searchParams['q']).')';
+					//$this->fq.=' OR (root_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
+					//$this->fq.=' OR (sub_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
+					//$this->fq.=' OR (leaf_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
+					$this->fq.=' OR tag:(' . $this->stripallslashes($searchParams['q']) . ')';
+					$this->fq.=' OR filter_list:(' . $this->stripallslashes($searchParams['q']) . ')';
+					$this->fq.=' OR attribute_list:(' . $this->stripallslashes($searchParams['q']) . ')';
+					
+					
+					$this->fq.=' )';
+				
+				
+					
+					
+					$this->fq.= $keyword_query ? $keyword_query : ''; 
+					
                 }
-
+			
                 if (isset($searchParams['product_ids']) && !empty($searchParams['product_ids'])) {
 
                     $item_idslist = explode("~", urldecode($searchParams['product_ids']));
@@ -149,8 +303,14 @@ class BharatSearch {
                if (isset($searchParams['sub_cat_id']) && !empty($searchParams['sub_cat_id'])) {
                     $this->fq.=' AND sub_cat_id:"' . intval($searchParams['sub_cat_id']) . '"';
                 }
-			    if (isset($searchParams['sub_cat_id']) && !empty($searchParams['sub_cat_id'])) {
-                    $this->fq.=' AND sub_cat_id:"' . intval($searchParams['sub_cat_id']) . '"';
+			    if (isset($searchParams['leaf_cat_id']) && !empty($searchParams['leaf_cat_id'])) {
+                    $this->fq.=' AND leaf_cat_id:"' . intval($searchParams['leaf_cat_id']) . '"';
+                }
+				
+				if (isset($searchParams['category_id']) && $searchParams['category_id']>0) {
+                    $this->fq.=' AND (';
+					 $this->fq.=' root_cat_id:' . intval($searchParams['category_id']) . ' OR sub_cat_id:' . intval($searchParams['category_id']) . ' OR leaf_cat_id:' . intval($searchParams['category_id']);
+					  $this->fq.=')';
                 }
 				if (isset($searchParams['sku']) && !empty($searchParams['sku'])) {
 
@@ -228,7 +388,7 @@ class BharatSearch {
                     }
 					
 					if ($searchParams['sort'] == 'name') {
-                        $this->sorting_field = 'product_name ' . $this->sorting_order;
+                        $this->sorting_field = 'product_name_ft ' . $this->sorting_order;
                     }
 					
                 }
@@ -249,7 +409,9 @@ class BharatSearch {
                     $this->params['facet'] = $this->is_facet;
                     $this->params['facet.field'] = array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft','selling_price','model_ft','brandname_ft','offers_ft','color_ft');
 					$this->params['facet.query'] =array('selling_price:[1 TO 500]','selling_price:[500 TO 1000]','selling_price:[1000 TO 1500]','selling_price:[1500 TO 2000]','selling_price:[2000 TO *]');
-                    $this->params['facet.limit'] = '200';
+					$this->params['facet.pivot'] ='root_cat_name_ft,sub_cat_name_ft,leaf_cat_name_ft';
+					
+                    $this->params['facet.limit'] = '100';
                     if (isset($searchParams['only_facet_sort']) && $searchParams['only_facet_sort'] == 'true') {
                         $this->params['facet.mincount'] = '1';
                         $this->params['facet.sort'] = 'false';
@@ -264,7 +426,6 @@ class BharatSearch {
                     $this->params['stats.field'] = 'cat_parent_id';
                 }
 				
-			
                 $this->result = $this->solr->search(htmlspecialchars_decode(urldecode($this->fq)), $this->start, $this->limit, $this->params);
 
                 $this->found = $this->result->response->numFound;
@@ -338,6 +499,16 @@ class BharatSearch {
                         }
 						
                     }
+					
+					if(isset($this->result->facet_counts->facet_pivot)){
+						foreach ($this->result->facet_counts->facet_pivot as $key=>$val){
+							
+							$this->facetdatafield['facet_data']['facet_new_tree_category']=$val;
+						}
+					
+					}
+					
+						
 				if(count($this->result->facet_counts->facet_queries) > 0){
 					$facetRange=array();
 					foreach($this->result->facet_counts->facet_queries as $key => $fields){
@@ -353,7 +524,7 @@ class BharatSearch {
                         $this->statsdata['price_stats']['min'] = $this->result->stats->stats_fields->item_selling_price->min;
                         $this->statsdata['price_stats']['max'] = $this->result->stats->stats_fields->item_selling_price->max;
                     }
-                    $this->merge_search_data = array_merge($this->countheadline, $this->results_arr, $this->facetdatafield, $this->statsdata);
+                    $this->merge_search_data = array_merge($this->countheadline, $this->results_arr, $this->facetdatafield, $this->statsdata);					
 				   return json_encode($this->merge_search_data);
                 } else {
 
