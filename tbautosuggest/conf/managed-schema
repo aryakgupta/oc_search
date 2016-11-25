@@ -458,16 +458,20 @@
  
   <field name="brandname" type="text_general" indexed="true" stored="true"/>
   <field name="last_modified" type="date" default="NOW" indexed="true" stored="true"/>
+  <field name="leaf_cat_name_ft" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="leaf_cat_name" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="model" type="text_general" indexed="true" stored="true"/>
   <field name="name1" type="prefix_full" omitNorms="true" multiValued="false" indexed="true" stored="true"/>
   <field name="name2" type="prefix_token" omitNorms="true" multiValued="false" indexed="true" stored="true"/>
   <field name="id" type="string" multiValued="false" indexed="true" required="true" stored="true"/>
   <field name="root_cat_name" type="text_general" multiValued="true" indexed="true" stored="true"/>
+  <field name="root_cat_name_ft" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="spellcheckitems" type="text_general" omitNorms="true" termVectors="true" multiValued="true" indexed="true" stored="false"/>
   <field name="sub_cat_name" type="text_general" multiValued="true" indexed="true" stored="true"/>
-   <field name="data_type" type="string" indexed="true" stored="true"/>
- <field name="type" type="int" indexed="true" stored="true"/>
+  <field name="sub_cat_name_ft" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="data_type" type="string" indexed="true" stored="true"/>
+  <field name="category_type" type="string" indexed="true" stored="true"/>
+  <field name="type" type="int" indexed="true" stored="true"/>
   <copyField source="brandname" dest="spellcheckitems"/>
   <copyField source="model" dest="spellcheckitems"/>
   <copyField source="name1" dest="spellcheckitems"/>
