@@ -29,3 +29,18 @@ Mens,man,male
 # Synonym mappings can be used for spelling correction too
 pixima => pixma
 
+Animals & Pet Supplies,pet supplies, pet products, animal supplies, pet items
+Art and Crafts,decorative, home décor items, decoration, craft items, art n crafts, home décor, home décor items, home craft, craft shop, art & craft, handicraft, craft store, gift craft
+Automobile,automobile accessories, tools, automobiles, automotive, automobile products
+Books=book, books, learning, book store, best books, book shop, latest book, good books, top books
+Celebrations,celebration gifts, celebration items, celebration set
+Festival,gifts, gift, present, gift items, best gifts, gift product, special gift, gift hamper, unique gift, festival sale, festival offers
+Home And Kitchen,house hold items, home, home accessories, home products, home care products, home items, house hold products, home needs products, house items, house products, household
+Kids=kid, kids, for children, kidss, children
+Mens,men, mens, man, gents, men's
+Nutritions,nutrition product, nutrition products, healthy nutrition, fitness nutrition
+Offer Zone,offer, offers, discounts, best offer, special offer, special deal, website offers, new offer, deals, discount offers, best online offers, best deals, online offers, today best offer, offer zone, today offer, today offers, all offers, shopping offers, new offers, sale offer, hot offer, hot deal
+Sports,sport, sports, sporty, sports goods, sport items
+Women,women, womens, ladies, lady, girls, girl, women's, female, females, girl's, woman, womans, woman's
+
+
