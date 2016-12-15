@@ -536,6 +536,9 @@
   <field name="sub_cat_id" type="int" multiValued="true" indexed="true" stored="true"/>
   <field name="sub_cat_name" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="sub_cat_name_ft" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="category_path_asc" type="ancestor_path" multiValued="true" indexed="true" stored="true"/>
+  <field name="category_path_desc" type="descendent_path" multiValued="true" indexed="true" stored="true"/>
+  <field name="category_path_ft" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="subtract" type="string" indexed="true" stored="true"/>
   <field name="tag" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="tax_class_id" type="int" indexed="false" stored="true"/>
