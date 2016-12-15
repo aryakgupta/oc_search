@@ -28,6 +28,10 @@ class BharatAutoSearch{
         $string = str_replace(')', '\)', $string);
         $string = str_replace('(', '\(', $string);
         $string = str_replace("!", "\!", $string);
+		$string = preg_replace("/\bfor\b/", "", $string);
+		$string = preg_replace("/\bFor\b/", "", $string);
+		$string = preg_replace("/\bin\b/", "", $string);
+      
         $string=$this->solr->escape($string);
         $string = urldecode($string);
         return strip_tags($string);
@@ -77,7 +81,9 @@ case "Product":
 	
 		
 		
-		$query=' (' . $query1.'  AND  (data_type:"category"^99999999.9 OR data_type:"Brand"^7777777.7  OR data_type:"searchlogs"^5566655))';
+		//$query=' (' . $query1.'  AND  (data_type:"category"^99999999.9 OR data_type:"Brand"^7777777.7  OR data_type:"searchlogs"^5566655))';
+		$query=' (' . $query1.'  AND  (data_type:"searchlogs"))';
+		$query.=' AND type:'.$type;
      	break;
 		
 		default:
@@ -92,13 +98,12 @@ case "Product":
 		$query1 = "(name1:(\"" . $query . "\") OR ".$tmpQuery ;
 		$query1 .= " )";
 		
-		
-		$query=' (' . $query1.'  AND  (data_type:"category"^99999999.9 OR data_type:"Brand"^7777777.7  OR data_type:"searchlogs"^5566655))';
-		
+		$query=' (' . $query1.' AND (data_type:"Brand"^7777777.7  OR data_type:"searchlogs"))';
+		$query.=' AND type:'.$type;
 }
 
 	$fl='*';
-	$options =array('facet' => 'true', 'facet.field' =>"data_type", 'facet.limit' => '20', 'facet.mincount' => '1', 'facet.sort' => 'true', 'fl' => '*,score'); 
+	$options =array('sort'=>'popularity desc','facet' => 'true', 'facet.field' =>"data_type", 'facet.limit' => '20', 'facet.mincount' => '1', 'facet.sort' => 'true', 'fl' => '*,score'); 
 
 	if(isset($searchParam["start"]) && $searchParam["start"]!=""){
 			$start=$searchParam["start"];}
@@ -148,6 +153,7 @@ case "Product":
 				$results_arr['data'][] = $jsonarray;
 			}
 			$mergedata=array_merge($countheadline,$results_arr);
+			
 			return json_encode($mergedata);
 	
 		}else{

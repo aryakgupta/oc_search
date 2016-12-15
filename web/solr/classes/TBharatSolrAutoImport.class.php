@@ -13,7 +13,7 @@ class TBharatSolrAutoImport
 		
         require_once(dirname(__FILE__).'/../solrConfig.php');
         $this->solr= new Apache_Solr_Service(SOLRSERVERIP, SOLRPORT, PRODICTAUTOSEARCH);
-		 
+		
 		
     }
 	
@@ -50,14 +50,14 @@ class TBharatSolrAutoImport
 				   $leaf_cat_name[$key]=$category['leaf_cat_name'];
 				   
 				   if(!in_array($leafcategory_val,$category['leaf_cat_name'])){
-					$this->leafcategory_list[$category['leaf_cat_id']]=$category['leaf_cat_name'];
+					$this->leafcategory_list[$category['leaf_cat_id']]=$category['leaf_cat_name']."~~".$category['sub_cat_name']."~~".$category['root_cat_name'];
 					}
 				
 					   if(!in_array($subcategory_val,$category['sub_cat_name'])){
-							$this->subcategory_list[$category['sub_cat_id']]=$category['sub_cat_name'];
+							$this->subcategory_list[$category['sub_cat_id']]=$category['sub_cat_name']."~~".$category['root_cat_name']."~~".$category['leaf_cat_name'];
 						}
 				   if(!in_array($rootcategory_val,$category['root_cat_name'])){
-						$this->rootcategory_list[$category['root_cat_id']]=$category['root_cat_name'];
+						$this->rootcategory_list[$category['root_cat_id']]=$category['root_cat_name']."~~".$category['sub_cat_name']."~~".$category['leaf_cat_name'];
 					}
 			   }
 				$document->root_cat_name=$root_cat_name;
@@ -93,11 +93,18 @@ if(isset($this->rootcategory_list) && !empty($this->rootcategory_list)){
 	$total=0;
 	foreach($this->rootcategory_list as $catid=>$rootcategory_list_val){
 		try { 
+		$catlist=explode('~~',$rootcategory_list_val);
 			$document = new Apache_Solr_Document ();
-			$document->id ="rcat#".md5(trim($rootcategory_list_val));
-			$document->name1=trim($rootcategory_list_val);
-			$document->name2=trim($rootcategory_list_val);
-			$document->root_cat_name='root';
+			$document->id ="rcat#".md5(trim($catlist[0]));
+			$document->name1=trim($catlist[0]);
+			$document->name2=trim($catlist[0]);
+			$document->category_type='root';
+			$document->root_cat_name=trim($catlist[0]);
+			$document->sub_cat_name=trim($catlist[1]);
+			$document->leaf_cat_name=trim($catlist[2]);
+			$document->root_cat_name_ft=trim($catlist[0]);
+			$document->sub_cat_name_ft=trim($catlist[1]);
+			$document->leaf_cat_name_ft=trim($catlist[2]);
 			$document->data_type='category';
 			$return=$this->solr->addDocument($document);
 			if($return->getHttpStatusMessage()=="OK"){						
@@ -126,12 +133,19 @@ if(isset($this->subcategory_list) && !empty($this->subcategory_list)){
 	$total=0;
 	foreach($this->subcategory_list as $scatid=>$subcategory_list_val){
 		try { 
+			$catlist=explode('~~',$subcategory_list_val);
 			$document = new Apache_Solr_Document ();
-			$document->id ="rcat#".md5(trim($subcategory_list_val));
-			$document->name1=trim($subcategory_list_val);
-			$document->name2=trim($subcategory_list_val);
+			$document->id ="rcat#".md5(trim($catlist[0]));
+			$document->name1=trim($catlist[0]);
+			$document->name2=trim($catlist[0]);
+			$document->sub_cat_name=trim($catlist[0]);
+			$document->root_cat_name=trim($catlist[1]);
+			$document->leaf_cat_name=trim($catlist[2]);
+			$document->sub_cat_name_ft=trim($catlist[0]);
+			$document->root_cat_name_ft=trim($catlist[1]);
+			$document->leaf_cat_name_ft=trim($catlist[2]);
 			$document->data_type='category';
-			$document->root_cat_name='sub';
+			$document->category_type='sub';
 			$return=$this->solr->addDocument($document);
 			if($return->getHttpStatusMessage()=="OK"){
 				
@@ -166,12 +180,19 @@ if(isset($this->leafcategory_list) && !empty($this->leafcategory_list)){
 	$total=0;
 	foreach($this->leafcategory_list as $leafcatid=>$leafcategory_list_val){
 		try { 
+			$catlist=explode('~~',$subcategory_list_val);
 			$document = new Apache_Solr_Document ();
-			$document->id ="rcat#".md5(trim($leafcategory_list_val));
-			$document->name1=trim($leafcategory_list_val);
-			$document->name2=trim($leafcategory_list_val);
+			$document->id ="rcat#".md5(trim($catlist[0]));
+			$document->name1=trim($catlist[0]);
+			$document->name2=trim($catlist[0]);
+			$document->leaf_cat_name=trim($catlist[0]);
+			$document->sub_cat_name=trim($catlist[1]);
+			$document->root_cat_name=trim($catlist[2]);
+			$document->leaf_cat_name_ft=trim($catlist[0]);
+			$document->sub_cat_name_ft=trim($catlist[1]);
+			$document->root_cat_name_ft=trim($catlist[2]);
 			$document->data_type='category';
-			$document->root_cat_name='leaf';
+			$document->category_type='leaf';
 			$return=$this->solr->addDocument($document);
 			if($return->getHttpStatusMessage()=="OK"){
 				
@@ -266,7 +287,38 @@ if(isset($this->leafcategory_list) && !empty($this->leafcategory_list)){
 		
 	}
 
+	public function indexSearchKeyWord($resultdata=array()){
+        $i=1;
+        $total=0; 
+        foreach($resultdata as $rs){
+            try { 
+                $document = new Apache_Solr_Document ();
+				$document->id=md5($rs['keyword']);
+                $document->name1 =trim($rs['keyword']);
+                $document->name2 =trim($rs['keyword']);
+                $document->data_type='searchlogs';
+				$document->type=(int)$rs['type'];
+				$document->popularity=(int)$rs['popularity'];
+                $return=$this->solr->addDocument($document);
+                if($return->getHttpStatusMessage()=="OK"){
+                         $this->countheadline['status_text'][]=$return->getHttpStatusMessage();                   
+                        $i++;
+                }else{
+                        $this->countheadline['status_text'][]=$return->getHttpStatusMessage();
+                }
+            }catch(Exception $e){                 
+                $this->countheadline['status_text'][]=$e->getMessage();
+				}
+            $total=$i-1;
 
+        }
+
+        $this->solr->commit();
+        $this->solr->optimize();
+        $this->countheadline['Total_index']['Total']=$total;
+        return json_encode($this->countheadline);
+
+    }
 	
 }
 

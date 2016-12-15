@@ -50,8 +50,11 @@ private function stripallslashes($string = "") {
 				}
 				
 				$this->query=$this->stripallslashes($this->query);				
-				
-
+		
+		$wheretype=' AND type:0';
+		if (isset($params['type']) && !empty($params['type'])) {
+			$wheretype=' AND type:'.$params['type'];
+		}
 		if(isset($params["q"]) && !empty($params["q"])){
 				$arr = explode (" ", $this->query);
 				$tmpQuery = "";
@@ -64,10 +67,10 @@ private function stripallslashes($string = "") {
 
 				$query1 = "(name1:(\"" . $this->query . "\") OR ".$tmpQuery ;
 				$query1 .= " )";	
-				$this->query=$query1;	
+				$this->query=$query1.$wheretype;	
 		
 		}else{				
-				$this->query="(*:*)";	
+				$this->query="(*:*)".$wheretype;;	
 			}
 
 			$this->options =array('fl' => 'name1,popularity','sort'=>'popularity desc'); 

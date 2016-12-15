@@ -1,0 +1,375 @@
+<?php
+class BharatSearchDemo {
+
+    private $solr;
+    private $fq;
+    private $sorting_field;
+    private $is_facet;
+    private $sorting_order;
+    private $params = array();
+    private $limit;
+    private $start;
+    private $result;
+    private $results_arr = array();
+    private $countheadline = array();
+    private $facetdatafield = array();
+    private $statsdata = array();
+    private $merge_search_data = array();
+    private $found;
+    private $groupresult;
+    private $fqitems;
+	private $spellparams=array();
+	private $categorylist=array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft');
+    public function __construct() {
+
+        require_once(dirname(__FILE__) . '/../SolrPhpClient/Apache/Solr/Service.php');
+        require_once(dirname(__FILE__) . '/../solrConfig.php');
+
+        $this->solr = new Apache_Solr_Service('127.0.0.1', '8083', PRODICTSEARCH);
+		
+    }
+
+    public function __desctruct() {
+        $this->unsetsolr();
+    }
+
+    private function stripallslashes($string = "") {
+
+        while (strchr($string, '\\')) {
+            $string = stripslashes(trim($string));
+        }
+        $string = str_replace(":", "\:", $string);
+        $string = str_replace("^", "\^", $string);
+        $string = str_replace("*", "\*", $string);
+        $string = str_replace("*:*", "\*\:\*", $string);
+        $string = str_replace("*:", "\:", $string);
+        $string = str_replace('()', '\(\)', $string);
+        $string = str_replace(')', '\)', $string);
+        $string = str_replace('(', '\(', $string);
+        $string = str_replace("!", "\!", $string);
+        $string=$this->solr->escape($string);
+        $string = urldecode($string);
+        return strip_tags($string);
+    }
+
+    public function getResults($searchParams = array()) {
+
+        try {
+
+            if ($this->solr->ping()) {
+
+                $this->fq = ' status:1';
+
+                if (isset($searchParams['type']) && !empty($searchParams['type;'])) {
+                    $this->fq.=' AND type:' . intval($searchParams['type;']);
+                } else {
+                    $this->fq.=' AND type:0';
+                }
+
+                
+
+                if (isset($searchParams['name']) && $searchParams['name'] != '') {
+                    $this->fq.=' AND product_name:(' . $this->stripallslashes($searchParams['name']) . ')';
+                }
+
+                if (isset($searchParams['q']) && $searchParams['q'] != '') {
+
+                    $query = urldecode($searchParams['q']);
+                    $arr = explode(" ", $query);
+                    $tmpQuery = "";
+                    foreach ($arr as $key => $val) {
+
+                        $tmpQuery .= "name_gram2:(\"" . $val . "\")^9988999.7 AND ";
+                    }
+                    $tmpQuery = preg_replace('/( AND )$/', "", $tmpQuery);
+                    $tmpQuery = "(" . $tmpQuery . ")";
+
+                    $query1 = "(name_gram:(\"" . $query . "\")^9988999.9 OR " . $tmpQuery;
+                    $query1 .= " )";
+
+
+                    
+
+                  
+
+		$this->fq.=' AND (' . $query1;
+		$this->fq.=' OR product_name:("' . $this->stripallslashes($searchParams['q']) . '")^9988999.9';
+		$this->fq.=' OR model:('.$this->stripallslashes($searchParams['q']).')';		
+		$this->fq.=' OR brandname:('.$this->stripallslashes($searchParams['q']).')';
+		$this->fq.=' OR (root_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
+		$this->fq.=' OR (sub_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
+		$this->fq.=' OR (leaf_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
+		$this->fq.=' )';
+                }
+
+                if (isset($searchParams['product_ids']) && !empty($searchParams['product_ids'])) {
+
+                    $item_idslist = explode("~", urldecode($searchParams['product_ids']));
+                    $i = 1;
+                    $this->fq.=' AND (';
+                    foreach ($item_idslist as $item_idslistValue) {
+                        if ($i == 1) {
+                            $this->fq.=' product_id:' . intval($item_idslistValue);
+                        } else {
+                            $this->fq.=' OR product_id:' . intval($item_idslistValue);
+                        }
+                        $i++;
+                    }
+                    $this->fq.=' )';
+                }
+
+				if (isset($searchParams['color']) && !empty($searchParams['color'])) {
+                    $this->fq.=' AND color_ft:("' . urldecode($searchParams['color']) . '")';
+                }
+				if (isset($searchParams['offer']) && !empty($searchParams['offer'])) {
+                    $this->fq.=' AND offers_ft:("' . urldecode($searchParams['offer']) . '")';
+                }
+				 if (isset($searchParams['brand']) && !empty($searchParams['brand'])) {
+                    $this->fq.=' AND brandname_ft:("' . urldecode($searchParams['brand']) . '")';
+                }
+				
+                if (isset($searchParams['model']) && !empty($searchParams['model'])) {
+                    $this->fq.=' AND model_ft:("' . urldecode($searchParams['model']) . '")';
+                }
+				 if (isset($searchParams['category']) && !empty($searchParams['category'])) {
+                    $this->fq.=' AND root_cat_name_ft:("' . urldecode($searchParams['category']) . '")';
+                }
+               if (isset($searchParams['subcat']) && !empty($searchParams['subcat'])) {
+                    $this->fq.=' AND sub_cat_name_ft:("' . urldecode($searchParams['subcat']) . '")';
+                }
+			    if (isset($searchParams['leafcat']) && !empty($searchParams['leafcat'])) {
+                    $this->fq.=' AND leaf_cat_name_ft:("' . urldecode($searchParams['leafcat']) . '")';
+                }
+				 if (isset($searchParams['price']) && !empty($searchParams['price'])) {
+                    $this->fq.=' AND (selling_price:(' . $this->stripallslashes($searchParams['price']) . ') )';
+                }
+                if (isset($searchParams['root_cat_id']) && !empty($searchParams['root_cat_id'])) {
+                    $this->fq.=' AND root_cat_id:"' . intval($searchParams['root_cat_id']) . '"';
+                }
+               if (isset($searchParams['sub_cat_id']) && !empty($searchParams['sub_cat_id'])) {
+                    $this->fq.=' AND sub_cat_id:"' . intval($searchParams['sub_cat_id']) . '"';
+                }
+			    if (isset($searchParams['sub_cat_id']) && !empty($searchParams['sub_cat_id'])) {
+                    $this->fq.=' AND sub_cat_id:"' . intval($searchParams['sub_cat_id']) . '"';
+                }
+				if (isset($searchParams['sku']) && !empty($searchParams['sku'])) {
+
+                    $sku_idslist = explode("~", urldecode($searchParams['sku']));
+                    $i = 1;
+                    $this->fq.=' AND (';
+                    foreach ($sku_idslist as $sku_idslistValue) {
+                        if ($i == 1) {
+                            $this->fq.=' sku:("' . $sku_idslistValue . '")';
+                        } else {
+                            $this->fq.=' OR sku:("' . $sku_idslistValue . '")';
+                        }
+                        $i++;
+                    }
+                    $this->fq.=' )';
+                }
+				
+                
+
+                if (isset($searchParams['price_range']) && !empty($searchParams['price_range'])) {
+                    list($minp, $maxp) = explode("-", $searchParams['price_range']);
+                    if ($minp > 0 && $maxp > 0) {
+                        $this->fq.=' AND (selling_price:[' . $minp . ' TO ' . $maxp . '])';
+                    } else {
+                        $this->fq.=' AND (selling_price:[0 TO ' . $searchParams['price_range'] . '])';
+                    }
+                }
+        
+
+
+                if (isset($searchParams["limit"]) && $searchParams["limit"] != "") {
+                    $this->limit = $searchParams["limit"];
+                } else {
+                    $this->limit = 30;
+                }
+
+                if (isset($searchParams["start"]) && $searchParams["start"] != "") {
+                    $this->start = $searchParams["start"];
+                } else {
+                    $this->start = 0;
+                }
+
+
+                if (isset($searchParams['is_only_facet']) && $searchParams['is_only_facet'] == 'yes') {
+                    $this->start = 0;
+                    $this->limit = 0;
+                    $this->is_facet = 'true';
+                } else if (isset($searchParams['is_with_facet']) && $searchParams['is_with_facet'] == 'yes') {
+                    $this->is_facet = 'true';
+                }
+
+
+				
+                if (isset($searchParams['sort']) && !empty($searchParams['sort'])) {
+					
+					if(isset($searchParams['orderby']) && !empty($searchParams['orderby'])) {
+						if($searchParams['orderby']=='desc' || $searchParams['orderby']=='asc'){
+							$this->sorting_order =$searchParams['orderby'];
+						}else{
+							$this->sorting_order = 'desc';		
+						}
+					}else{
+						$this->sorting_order = 'desc';		
+					}
+                
+				
+                    if ($searchParams['sort'] == 'price') {
+                        $this->sorting_field = 'selling_price ' . $this->sorting_order;
+                    }
+					if ($searchParams['sort'] == 'percentage') {
+                        $this->sorting_field = 'discount_price ' . $this->sorting_order;
+                    }
+					if ($searchParams['sort'] == 'product_id') {
+                        $this->sorting_field = 'product_id ' . $this->sorting_order;
+                    }
+					
+					if ($searchParams['sort'] == 'name') {
+                        $this->sorting_field = 'product_name ' . $this->sorting_order;
+                    }
+					
+                }
+
+                if (!empty($this->sorting_field) && !empty($this->sorting_order)) {
+                    $this->params['sort'] = $this->sorting_field;
+                }
+
+			
+                if (isset($searchParams['return_field']) && !empty($searchParams['return_field'])) {
+                    $this->params['fl'] = $searchParams['return_field'];
+                } else {
+                    $this->params['fl'] = '*';
+                }
+
+
+                if (isset($this->is_facet) && $this->is_facet == 'true') {
+                    $this->params['facet'] = $this->is_facet;
+                    $this->params['facet.field'] = array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft','selling_price','model_ft','brandname_ft','offers_ft','color_ft');
+					$this->params['facet.query'] =array('selling_price:[1 TO 500]','selling_price:[500 TO 1000]','selling_price:[1000 TO 1500]','selling_price:[1500 TO 2000]','selling_price:[2000 TO *]');
+                    $this->params['facet.limit'] = '200';
+                    if (isset($searchParams['only_facet_sort']) && $searchParams['only_facet_sort'] == 'true') {
+                        $this->params['facet.mincount'] = '1';
+                        $this->params['facet.sort'] = 'false';
+                    } else {
+                        $this->params['facet.mincount'] = '1';
+                        $this->params['facet.sort'] = 'true';
+                    }
+                }
+
+                if (isset($searchParams['parent_id_stats']) && !empty($searchParams['parent_id_stats'])) {
+                    $this->params['stats'] = 'true';
+                    $this->params['stats.field'] = 'cat_parent_id';
+                }
+				
+			
+                $this->result = $this->solr->search(htmlspecialchars_decode(urldecode($this->fq)), $this->start, $this->limit, $this->params);
+
+                $this->found = $this->result->response->numFound;
+								
+		if($this->found==0){
+			if($searchParams['q']!=''){
+				
+				$this->spellparams['spellcheck']='true';
+				$this->spellparams['spellcheck.collate']='true';
+				$this->spellparams['spellcheck.build']='true';
+				$spellq=$searchParams['q'];
+				$splelresult=array();
+				
+				$splelresult= $this->solr->spellsearch(htmlspecialchars_decode(urldecode($spellq)), 0, 3, $this->spellparams);
+				$spellcount=0;
+				if(isset($splelresult->spellcheck->suggestions[1])){
+				$spellcount=$splelresult->spellcheck->suggestions[1]->numFound;
+				}
+				if($spellcount>0){
+					
+					$spellsearchname=$splelresult->spellcheck->suggestions[1]->suggestion[0]->word;
+					if($splelresult->spellcheck->suggestions[3]->suggestion[0]->word!=''){
+						$spellsearchname.=" ".$splelresult->spellcheck->suggestions[3]->suggestion[0]->word;
+					}
+					if($splelresult->spellcheck->suggestions[5]->suggestion[0]->word!=''){
+						$spellsearchname.=" ".$splelresult->spellcheck->suggestions[5]->suggestion[0]->word;
+					}
+					$this->fq=' (product_name:('.$spellsearchname.')^99999)';	
+					$this->result = $this->solr->search(htmlspecialchars_decode(urldecode($this->fq)), $this->start, $this->limit, $this->params);
+
+					$this->found = $this->result->response->numFound;
+					$this->countheadline['didyoumean'] ='Showing results for "'.$spellsearchname.'".Search instead for "'.strip_tags($searchParams['q']).'"';					
+				}
+		
+			}
+		}				
+                $this->countheadline['status_code'] = $this->result->getHttpStatus();
+                if ($this->result->getHttpStatusMessage() == "OK") {
+                    $this->countheadline['status_text'] = "Success";
+                } else {
+                    $this->countheadline['status_text'] = $this->result->getHttpStatusMessage();
+                }
+                $this->countheadline['count'] = $this->found;
+
+
+                if ($this->found > 0) {
+
+                    foreach ($this->result->response->docs as $doc) {
+                        $doc->_fields = $doc->getFieldNames();
+                        $fcount = count($doc->_fields);
+                        $jsonarray = array();
+                        for ($ctr = 0; $ctr < $fcount; $ctr++) {
+                            if (is_array($doc->__get($doc->_fields[$ctr]))) {
+                                $jsonarray[$doc->_fields[$ctr]] = strip_tags(implode(', ', $doc->__get($doc->_fields[$ctr])));
+                            } else {
+                                $jsonarray[$doc->_fields[$ctr]] = strip_tags($doc->__get($doc->_fields[$ctr]));
+                            }
+                        }
+                        $this->results_arr['data'][] = $jsonarray;
+                    }
+
+                    if (isset($this->result->facet_counts->facet_fields) && count($this->result->facet_counts->facet_fields) > 0) {
+                        foreach ($this->result->facet_counts->facet_fields as $key => $fields) {
+                            $facetfield = array();
+
+                            foreach ($fields as $key1 => $value1) {
+
+                                $facetfield[$key1] = $value1;
+                            }							
+                            $this->facetdatafield['facet_data'][$key] = $facetfield;
+                        }
+						
+                    }
+				if(count($this->result->facet_counts->facet_queries) > 0){
+					$facetRange=array();
+					foreach($this->result->facet_counts->facet_queries as $key => $fields){
+						
+							list($rangeFields,$rangeFieldValue)=explode(":[",$key);
+							$rangeFieldValue = substr($rangeFieldValue, 0, -1);
+							$rangeFieldValue=str_replace('2000 TO *','2000 TO Above',$rangeFieldValue);
+							$facetRange[$rangeFieldValue]=$fields;					
+						}
+						$this->facetdatafield['facet_data']['price_range']=$facetRange;
+					}
+                    if (isset($this->result->stats->stats_fields) && count($this->result->stats->stats_fields) > 0) {
+                        $this->statsdata['price_stats']['min'] = $this->result->stats->stats_fields->item_selling_price->min;
+                        $this->statsdata['price_stats']['max'] = $this->result->stats->stats_fields->item_selling_price->max;
+                    }
+                    $this->merge_search_data = array_merge($this->countheadline, $this->results_arr, $this->facetdatafield, $this->statsdata);
+				   return json_encode($this->merge_search_data);
+                } else {
+
+                    return json_encode($this->countheadline);
+                }
+            }
+        } catch (Exception $e) {
+            $this->countheadline['status_code'] = "Caught exception";
+            $this->countheadline['status_text'] = $e->getMessage();
+            $this->countheadline['search_query'] = http_build_query($searchParams);
+            return json_encode($this->countheadline);
+        }
+    }
+
+    private function unsetsolr() {
+        unset($this->solr);
+    }
+
+}

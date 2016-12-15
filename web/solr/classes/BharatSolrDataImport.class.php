@@ -48,7 +48,7 @@ class BharatSolrDataImport
 				$sub_cat_name=array();
 				$leaf_cat_id=array();
 				$leaf_cat_name=array();
-				
+				$cat_path=array();
                foreach($rs['category'] as $key=> $category){
 				   $root_cat_id[$key]=$category['root_cat_id'];
 				   $root_cat_name[$key]=$category['root_cat_name'];
@@ -56,7 +56,11 @@ class BharatSolrDataImport
 				   $sub_cat_name[$key]=$category['sub_cat_name'];
 				   $leaf_cat_id[$key]=$category['leaf_cat_id'];
 				   $leaf_cat_name[$key]=$category['leaf_cat_name'];
+				   $cat_path[$key]=$category['root_cat_name']."/".$category['sub_cat_name']."/".$category['leaf_cat_name'];
 			   }
+			   $document->category_path_asc=$cat_path;
+			   $document->category_path_desc=$cat_path;
+			   $document->category_path_ft=$cat_path;
                 $document->root_cat_id=$root_cat_id;
                 $document->root_cat_name=$root_cat_name;
 				$document->root_cat_name_ft=$root_cat_name;
@@ -71,7 +75,44 @@ class BharatSolrDataImport
 				$document->attribute_list=json_encode($rs['attribute']);
 				$document->filter_list=json_encode($rs['filter']);
 				$document->option_list=json_encode($rs['option']);
-                
+                 $attributelistft=array();
+				 $attributelist=array();
+				foreach($rs['attribute'] as $key=> $attribute){
+						$attributelistft[]=$key.':'.$attribute;
+						$attributelist[]=$attribute;
+				}
+				$document->attribute_list_ft=$attributelistft;
+				$document->attribute_list_all=$attributelist;
+				
+				$filterlistft=array();
+				$filterlist=array();
+				
+				foreach($rs['filter'] as $key=> $filter){
+					
+					foreach($filter as $filter_val){
+						$filterlistft[]=$key.':'.$filter_val;
+						$filterlist[]=$filter_val;
+					}
+				}
+				
+				$document->filter_list_ft=$filterlistft;
+				$document->filter_list_all=$filterlist;
+				
+				/*
+				
+				$optionlistft=array();
+				$optionlist=array();
+				foreach($rs['option'] as $key=> $option){
+						$optionlistft[]=$key.':'.$option;
+						$optionlist[]=$option;
+				}
+				
+				
+				$document->option_list_ft=$optionlistft;
+				$document->option_list_all=$optionlist;
+								
+				*/
+				
                $document->image=$rs['image'];
 			   
 			   if(count($rs['images'])>0){
@@ -79,10 +120,26 @@ class BharatSolrDataImport
 			   }
 			  
 			   //$document->last_modified=trim($rs['last_modified']);
+			 
+			  
 			   if($rs['filter']['Color'][0]!=''){
 				   $document->color=$rs['filter']['Color'];
 				   $document->color_ft=$rs['filter']['Color'];
 			   }
+			  
+			  
+			  $size_list=array();
+			  
+			   if($rs['option'][0]['Size']!=''){
+				    foreach($rs['option'][0]['Size'] as $sizekey=>$sizekeyval){
+					if($sizekeyval>0){
+						$size_list[]=$sizekey;
+					   }
+				   }
+					   $document->size=$size_list;
+					   $document->size_ft=$size_list;
+			   }
+			   
 			   
                 $document->shipping=trim($rs['shipping']);
                 $document->transfer_price=(float)$rs['transfer_price'];
@@ -128,12 +185,19 @@ class BharatSolrDataImport
 				$document->meta_title=trim($rs['meta_title']);
 				$document->meta_description=trim($rs['meta_description']);
 				$document->mrp=(float)$rs['mrp'];
-				$document->discount_price=(float)$rs['discount_price'];
+				
+				//$document->discount_price=(float)$rs['discount_price'];
+				$document->discount_price=(float)$rs['percentagediscount'];
+				
 				$document->selling_price=(float)$rs['selling_price'];
 				$document->stock_status=$rs['stock_status'];
 				$document->weight_class=$rs['weight_class'];
 				$document->length_class=$rs['length_class'];
-			
+				if($rs['quantity']>0){
+					$document->out_of_stock=1;
+				}else{
+					$document->out_of_stock=0;	
+				}
                 $return=$this->solr->addDocument($document);
 
                 if($return->getHttpStatusMessage()=="OK"){
@@ -162,7 +226,7 @@ class BharatSolrDataImport
         $this->solr->commit();
        $this->solr->optimize();
         $this->countheadline['Total_index']['Total']=$total;
-        return json_encode($this->countheadline);
+       return json_encode($this->countheadline);
 
     }
 

@@ -1,8 +1,8 @@
 <?php
 error_reporting(0);
-require_once(dirname(__FILE__) . '/solrConfig.php');
-require_once(dirname(__FILE__) . '/classes/BharatAutoSearch.class.php');
+ require_once(dirname(__FILE__) . '/solrConfig.php');
 $obj = new BharatAutoSearch();
+
 $searchParam=array();
 $autoserachData='';
 $response_array						 =  array();
@@ -36,14 +36,52 @@ $error=1;
 		
 if($error==0)
 {
-		
+		echo "======";
 		$autoserachData=$obj->getSuggestionResult($searchParam);
+	
 		$result= (array)json_decode($autoserachData,true);
 		$master_data				= $result['data'];
 		$master_data_limit_count	= count($master_data);
 		$master_data_count		    = $result['count'];
 	
-	if($master_data_count>0){			
+	if($master_data_count>0){
+		
+		foreach($master_data as $resultcatVal){
+			if($resultcatVal['data_type']=='searchlogs'){
+				$searchParam['q']=$resultcatVal['name1'];
+				break;
+			}
+		}
+	$objcat = new BharatSearchCat();
+	echo "======";
+	print_r($searchParam);
+	$produt_data = $objcat->getCatautosuggest($searchParam);
+	$resultcat= (array)json_decode($produt_data);
+	$item_send_catarray = array();
+	if(count($resultcat)>0){
+		$r=0;
+		$serachwords=urldecode($searchParam['q']);
+		$getflag=0;
+		foreach($master_data as $resultcatVal){
+			if($resultcatVal['data_type']=='searchlogs'){
+				$serachwords=$resultcatVal['name1'];
+				$getflag=1;				
+				break;
+			}
+		}
+		if($getflag==0){
+			$serachwords=$master_data[0]['name1'];
+		}
+		foreach($resultcat as $resultcatVal){
+			$item_send_catarray[$r]['id'] 			= md5($resultcatVal);
+			
+			$item_send_catarray[$r]['name']			= $serachwords." For ".$resultcatVal;
+			$item_send_catarray[$r]['data_type']			='category';
+			$r++;
+		}
+	}
+		
+		
 		$item_send_array = array();
 		$main_content['count'] 	= $master_data_count;
 		$main_content['suggest_count'] 	= $master_data_limit_count;			
@@ -53,7 +91,8 @@ if($error==0)
 			$item_send_array[$i]['name']			= $looping_array['name1'];
 			$item_send_array[$i]['data_type']			= $looping_array['data_type'];
 		}
-		$main_content['data'] = $item_send_array;
+		$merge_response=array_merge($item_send_catarray,$item_send_array);
+		$main_content['data'] = $merge_response;
 	}else{
 		$main_content['count'] 	= 0;
 		$main_content['suggest_count'] 	= 0;
@@ -71,5 +110,7 @@ if($error==0)
 	$data_array['response']		= $response_array;
 	$data_array['header']		= $header;
 	$data_array['main_content']	= $main_content;
-	echo json_encode($data_array);
+	echo "<pre>";
+	print_r($data_array);
+	//echo json_encode($data_array);
 ?>
