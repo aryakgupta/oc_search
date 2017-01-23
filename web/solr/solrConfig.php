@@ -1,6 +1,6 @@
 <?php
 //define('SOLRSERVERIP', '52.74.73.206'); 
-define('SOLRSERVERIP', 'localhost'); 
+define('SOLRSERVERIP', '10.0.12.41'); 
 define('SOLRPORT', '8083');
 define('PRODICTSEARCH', 'solr/products_details'); 
 define('PRODICTAUTOSEARCH', 'solr/autosuggest'); 
@@ -16,6 +16,4 @@ define('DOCUMENT_ROOT','/mnt/trendybharat/public_html/solr');
 		}
 	}
 /*</auto_including_class_files>*/
-
-
 ?>

@@ -24,13 +24,17 @@ function getCulrProcess($cUrl){
 }
 
 	$itemdata=array();
-	//$itemdata=getCulrProcess('http://52.66.153.225/trending_search.php?page='.$startpage.'&record='.$limit);
-	//$itemdata=json_eecode($itemdata,true);
+	if(isset($_GET['index_type']) && $_GET['index_type']==1){
+		$itemdata=getCulrProcess('http://35.154.14.59/top10_trendy_search-export.php');
+	}else{
+		$itemdata=getCulrProcess('http://35.154.14.59/top10_trendy_search-domestic.php');
+		
+	}
 	
-$itemdata=array('0'=>Array('keyword'=> 'watch','popularity' => '13198'),'1'=>Array('keyword' => 'watches','popularity' => '7242'));
-
+	$itemdata=json_decode($itemdata,true);
 	if (is_array($itemdata) || is_object($itemdata))
 	{
+		
 		$data=$obj->indexTrendingKeyWord($itemdata);
 		echo "<pre>";
 		print_r(json_decode($data));

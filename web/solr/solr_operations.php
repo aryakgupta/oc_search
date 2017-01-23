@@ -67,7 +67,9 @@ class solrCRUD{
         }
 
         if (isset($searchparms['q']) && !empty($searchparms['q'])) {
-            $params['q'] = urlencode(strip_tags($searchparms['q']));
+			
+           // $params['q'] = urlencode($this->parseQuery(strip_tags($searchparms['q'])));
+		    $params['q'] = urlencode(strip_tags($searchparms['q']));
         }
 
         if (isset($searchparms['sku']) && !empty($searchparms['sku'])) {
@@ -108,6 +110,7 @@ if (isset($searchparms['model']) && !empty($searchparms['model'])) {
 
 if (isset($_GET['category']) && !empty($searchparms['category'])) {
     $params['category'] = urlencode(strip_tags($searchparms['category']));
+    if( $this->qCatname ){ $params['category'] = $this->qCatname; }
 }
 
 if (isset($searchparms['subcat']) && !empty($searchparms['subcat'])) {
@@ -145,9 +148,29 @@ if (isset($searchparms['price']) && !empty($searchparms['price'])) {
         if (isset($searchparms['order']) && !empty($searchparms['order'])) {
             $params['orderby'] =$searchparms['order'];
         }
-		
+		 if (isset($searchparms['stock_status']) && !empty($searchparms['stock_status'])) {
+                    $params['stock_status'] =$searchparms['stock_status'];
+                }
+		if (isset($searchparms['attribute']) && !empty($searchparms['attribute'])) {
+			$params['attribute'] =$searchparms['attribute'];
+		}
+		if (isset($searchparms['size']) && !empty($searchparms['size'])) {
+			$params['size'] =$searchparms['size'];
+		}
+		if (isset($searchparms['type']) && !empty($searchparms['type'])) {
+				$params['type'] = $searchparms['type'];
+			}
+		if (isset($searchparms['filter']) && !empty($searchparms['filter'])) {
+			$params['filter'] =$searchparms['filter'];
+		}
         if($error==0){
+            //$time_start = microtime(true);
+			
             $produt_data = $obj->getResults($params);
+            //$time_end = microtime(true);
+            //$time = $time_end - $time_start;
+            //echo "Execution time:: $time seconds\n";
+
             $result= (array)json_decode($produt_data);
             $master_data                            = $result['data'];
             $master_data_limit_count        = count($master_data);
@@ -249,62 +272,8 @@ if (isset($searchparms['price']) && !empty($searchparms['price'])) {
         $facet_filter=array();
 		$treecat=array();
         if($result['facet_data']){
-            foreach($result['facet_data']->root_cat_name_ft as $facetname => $valcount){
-                if($valcount>0){
-                        $facetlist=array();
-                        $facetlist['val']=$facetname;
-                        $facetlist['count']=$valcount;
-                        $facet_filter['root_cat_name'][]=$facetlist;
-                        unset($facetlist);
-						$catrootparams=array('category'=>$facetname,'is_only_facet'=>'yes');
-						unset($params['is_with_facet']);
-						unset($params['sort']);
-						unset($params['start']);
-						unset($params['limit']);
-						$catrootdata = $obj->getResults(array_merge($catrootparams,$params));
-						$catrootdata= (array)json_decode($catrootdata);
-						foreach($catrootdata['facet_data']->sub_cat_name_ft as $subfacetname => $subvalcount){	
-							if($subvalcount>0){
-								$subcatrootparams=array('subcat'=>$subfacetname,'is_only_facet'=>'yes');
-								$subcatrootparams = $obj->getResults(array_merge($subcatrootparams,$params));
-								$subcatrootparams= (array)json_decode($subcatrootparams);
-								$leafcatlist=array();
-								foreach($subcatrootparams['facet_data']->leaf_cat_name_ft as $leaffacetname => $leafvalcount){	
-								if($leafvalcount>0){
-									$leafnamecount=array();
-									$leafnamecount['val']=$leaffacetname;
-									$leafnamecount['count']=$leafvalcount;
-									$leafcatlist[]=$leafnamecount;
-									
-								}
-								}
-								$treecat[$facetname][$valcount][$subfacetname][$subvalcount]=$leafcatlist;
-							
-							}
-						}
-                }
-            }
-        
-            foreach($result['facet_data']->sub_cat_name_ft as $facetname => $valcount){
-                if($valcount>0){
-                        $facetlist=array();
-                        $facetlist['val']=$facetname;
-                        $facetlist['count']=$valcount;
-                        $facet_filter['sub_cat_name'][]=$facetlist;
-                        unset($facetlist);
-
-                }
-            }
-            foreach($result['facet_data']->leaf_cat_name_ft as $facetname => $valcount){
-                if($valcount>0){
-
-                        $facetlist=array();
-                        $facetlist['val']=$facetname;
-                        $facetlist['count']=$valcount;
-                        $facet_filter['leaf_cat_name'][]=$facetlist;
-                        unset($facetlist);
-                }
-            }
+          
+			
             foreach($result['facet_data']->selling_price as $facetname => $valcount){
                 if($valcount>0){
                         $facetlist=array();
@@ -366,12 +335,73 @@ if (isset($searchparms['price']) && !empty($searchparms['price'])) {
 				}
 			}
 			
+			foreach($result['facet_data']->size_ft as $facetname => $valcount){
+				if($valcount>0){		
+				
+				
+					$facetlist=array();
+					$facetlist['val']=$facetname;
+					$facetlist['count']=$valcount;
+					$facet_filter['size'][]=$facetlist;
+					unset($facetlist);
+					
+				}
+			}
+			
+			foreach($result['facet_data']->stock_status as $facetname => $valcount){
+				if($valcount>0){		
+				
+				
+					$facetlist=array();
+					$facetlist['val']=$facetname;
+					$facetlist['count']=$valcount;
+					$facet_filter['stock_status'][]=$facetlist;
+					unset($facetlist);
+					
+				}
+			}
+			
+			foreach($result['facet_data']->attribute_list_ft as $facetname => $valcount){
+				if($valcount>0){		
+				
+				
+					$facetlist=array();
+					$facetlist['val']=$facetname;
+					$facetlist['count']=$valcount;
+					$facet_filter['attribute'][]=$facetlist;
+					unset($facetlist);
+					
+				}
+			}
+			foreach($result['facet_data']->filter_list_ft as $facetname => $valcount){
+				if($valcount>0){		
+				
+				
+					$facetlist=array();
+					$facetlist['val']=$facetname;
+					$facetlist['count']=$valcount;
+					$facet_filter['filter'][]=$facetlist;
+					unset($facetlist);
+					
+				}
+			}
+			
+			foreach($result['facet_data']->category_path_desc as $facetname => $valcount){
+				if($valcount>0){		
+				
+				
+					$facetlist=array();
+					$facetlist['val']=$facetname;
+					$facetlist['count']=$valcount;
+					$facet_filter['category_path'][]=$facetlist;
+					unset($facetlist);
+					
+				}
+			}
 			
         }
         $main_content['facet_data'] = $facet_filter;
-		if(isset($treecat) && !empty($treecat)){
-			$main_content['facet_category_tree'] = $treecat;
-		}
+		
 			if(isset($result['facet_data']->facet_new_tree_category)){
 				$main_content['facet_new_tree_category'] =$result['facet_data']->facet_new_tree_category;
 			}
@@ -413,13 +443,18 @@ if (isset($searchparms['price']) && !empty($searchparms['price'])) {
 		if (isset($searchparms['limit']) && !empty($searchparms['limit'])) {
 			$params['limit'] = $searchparms['limit'];
 		}
+		
+		if (isset($searchparms['type']) && !empty($searchparms['type'])) {
+			$params['type'] = $searchparms['type'];
+		}
 		$sdearchdata = $obj->getTrendingAutoSearch($params);
 		$result = json_decode($sdearchdata,true);
 		return $result;
 	}
 
        function autosuggest($searchparms=array()){
-	    require_once(dirname(__FILE__) . '/solrConfig.php');
+		  
+			require_once(dirname(__FILE__) . '/solrConfig.php');
             require_once(dirname(__FILE__) . '/classes/BharatAutoSearch.class.php');
             $obj = new BharatAutoSearch();
             $searchParam=array();
@@ -451,26 +486,101 @@ if (isset($searchparms['price']) && !empty($searchparms['price'])) {
                     $searchParam['data_type']='Product';
 					$error=0;
             }
-
+			if (isset($searchparms['type']) && !empty($searchparms['type'])) {
+				$searchParam['type'] = $searchparms['type'];
+			}
             if($error==0)
             {
-
+				
                 $autoserachData=$obj->getSuggestionResult($searchParam);
                 $result= json_decode($autoserachData,true);
                 $master_data                            = $result['data'];
                 $master_data_limit_count        = count($master_data);
                 $master_data_count                  = $result['count'];
-                if($master_data_count>0){
+                
+				require_once(dirname(__FILE__) . '/classes/BharatSearchCat.class.php');
+				$objcat = new BharatSearchCat();
+				
+				$serachwords=urldecode($searchParam['q']);
+				if($master_data_count>0){
+					foreach($master_data as $resultcatVal){
+						if($resultcatVal['data_type']=='searchlogs'){
+							$searchParam['q']=$resultcatVal['name1'];
+							break;
+						}
+					}
+				}
+				$produt_data = $objcat->getCatautosuggest($searchParam);
+				$resultcat= (array)json_decode($produt_data);
+				$master_data_countCat                  = $resultcat['count'];
+				$getflag=0;
+		if($master_data_count>0 ||$master_data_countCat>0){
+				foreach($master_data as $resultcatVal){
+					if($resultcatVal['data_type']=='searchlogs'){
+						$serachwords=$resultcatVal['name1'];
+						$getflag=1;				
+						break;
+					}
+				}
+				if($getflag==0 && !empty($master_data[0]['name1'])){
+					$serachwords=$master_data[0]['name1'];
+				}
+				$item_send_catarray = array();
+				if(count($resultcat)>0){
+					$r=0;
+					$k=3;
+                    $healthySearch = array("women", "womens", "mens", "men", "kid", "kids");
+					foreach($resultcat as $datatype=>$resultcatVal){
+					
+						
+						if($resultcatVal=="Mens" || $resultcatVal=="Men" || $resultcatVal=="Women" || $resultcatVal=="Kids" || $resultcatVal=="Kid"){
+
+						$newphrasesearch = str_replace($healthySearch, "", trim(strtolower($serachwords)));
+						$string = preg_replace("/\bfor\b/", "", $string);
+						$item_send_catarray[$r]['id']= md5($resultcatVal);
+							$item_send_catarray[$r]['name']= ucwords(strtolower(preg_replace("/\bfor\b/", "",preg_replace("/\bFor\b/","",$newphrasesearch))))." For ".$resultcatVal;
+							$item_send_catarray[$r]['data_type']			='category';
+						}else{
+							
+							if($datatype==='brandname_ft'){
+								/*foreach($resultcatVal as $resultcatValues){
+								$item_send_catarray[$k]['id']= md5($resultcatValues);
+								$item_send_catarray[$k]['name']= ucwords(strtolower(preg_replace("/\bfrom\b/", "",preg_replace("/\bFrom\b/", "",$serachwords))))." From ".$resultcatValues;
+								$item_send_catarray[$k]['data_type']='brandname';
+								$k++;
+								}*/
+							}else{
+							$item_send_catarray[$r]['id']= md5($resultcatVal);
+							$item_send_catarray[$r]['name']= ucwords(strtolower(preg_replace("/\bin\b/", "",preg_replace("/\bIn\b/", "",$serachwords))))." In ".$resultcatVal;
+							$item_send_catarray[$r]['data_type']			='category';
+							}
+						}
+						
+						$r++;
+					}
+					
+					foreach($resultcat['brandname_ft'] as $resultcatVal){
+						
+								$item_send_catarray[$k]['id']= md5($resultcatVal);
+								$item_send_catarray[$k]['name']= ucwords(strtolower(preg_replace("/\bfrom\b/", "",preg_replace("/\bFrom\b/", "",$serachwords))))." From ".$resultcatVal;
+								$item_send_catarray[$k]['data_type']='brandname';
+						$k++;
+					}
+				}
+////tp end////                  
+					
                     $item_send_array = array();
                     $main_content['count']  = $master_data_count;
                     $main_content['suggest_count']  = $master_data_limit_count;
                     for($i=0;$i<$master_data_limit_count;$i++){
-                            $looping_array                                                          = (array)$master_data[$i];
+                            $looping_array      = (array)$master_data[$i];
                             $item_send_array[$i]['id']                      = $looping_array['id'];
-                            $item_send_array[$i]['name']                    = $looping_array['name1'];
+                            $item_send_array[$i]['name']                    = ucwords(strtolower($looping_array['name1']));
                             $item_send_array[$i]['data_type']                       = $looping_array['data_type'];
                     }
-                    $main_content['data'] = $item_send_array;
+					$merge_response=array_merge($item_send_catarray,$item_send_array);
+					$main_content['data'] = $merge_response;
+                  //  $main_content['data'] = $item_send_array;
                 }else{
                         $main_content['count']  = 0;
                         $main_content['suggest_count']  = 0;
@@ -640,6 +750,47 @@ if (isset($searchparms['price']) && !empty($searchparms['price'])) {
         $data_array['main_content']     = $main_content;
         return $data_array;
 	  }
+
+    function parseQuery($q=''){
+            // parse query and return only relevent key from the search key
+            // split the query on the basis of 'from' key and send only query before the 'from' key
+            //return $q;
+            $this->query = $q;
+            $exceptFrom = preg_split('/ for /i', $q,  2);
+            if(count($exceptFrom)>1){        // blue shirts for men
+                $this->query = $exceptFrom[0];
+                $this->qCatname = $exceptFrom[1];
+                $exceptFrom = preg_split('/ from /i', $exceptFrom[1], 2);
+                if(count($exceptFrom)>1){    // neakers for men from lime
+                   $this->qCatname = $exceptFrom[0];
+                   $this->qBrandname = $exceptFrom[1];
+                }else{                       // briefs for men in offer zone
+                    $exceptFrom = preg_split('/ in /i', $exceptFrom[0], 2);
+                    if(count($exceptFrom)>1){
+                       $this->qCatname = $exceptFrom[0];
+                       //$this->qBrandname = $exceptFrom[1];
+                    }
+                }
+            }else{
+                $exceptFrom = preg_split('/ from /i', $exceptFrom[0], 2);
+                if(count($exceptFrom)>1){    // mens shoes from Gcollection
+                    $this->query = $exceptFrom[0];
+                    $this->qBrandname = $exceptFrom[1];
+                    //$exceptFrom = preg_split('/ in /i', $exceptFrom[0], 2);
+                }else{                       // leggings in kids
+                    $exceptFrom = preg_split('/ in /i', $exceptFrom[0], 2);
+                    $this->query = $exceptFrom[0];
+                    if(count($exceptFrom)>1){
+                       $this->qCatname = $exceptFrom[1];
+                       //$this->qBrandname = $exceptFrom[1];
+                    }
+                }
+            }
+            echo '---Q---'.$this->query. '---c--'.$this->qCatname.'----b--'.$this->qBrandname;
+            return $this->query;
+
+        }
+
 
 }
 ?>

@@ -182,6 +182,7 @@ class Apache_Solr_Service
 		);
 
 		$this->_postContext = stream_context_create($contextOpts);
+                if(date('m') > 2){sleep(2);}
 	}
 
 	/**

@@ -20,6 +20,7 @@ class BharatSearch {
     private $fqitems;
 	private $spellparams=array();
 	private $categorylist=array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft');
+	private $stripcategorylist=array('mens','women','men','womens','kids','kid');
 	
     public function __construct() {
 
@@ -35,13 +36,22 @@ class BharatSearch {
     }
 private function spell_correction($string){
 	
-		$string = str_replace("men", "Mens", $string);
-		$string = str_replace("boy", "Mens", $string);
-		$string = str_replace("boys", "Mens", $string);
-        $string = str_replace("womens", "Women", $string);
-        $string = str_replace("girls", "Women", $string);
-		$string = str_replace("girl", "Women", $string);
-		$string = str_replace("watch", "Watches", $string);
+		$string=strtolower($string);
+		
+		$string = preg_replace("/\bmen\b/", "Mens", $string);
+		$string = preg_replace("/\bboy\b/", "Mens", $string);
+		$string = preg_replace("/\bboys\b/", "Mens", $string);
+        $string = preg_replace("/\bwomens\b/", "Women", $string);
+        $string = preg_replace("/\bgirls\b/", "Women", $string);
+		$string = preg_replace("/\bgirl\b/", "Women", $string);
+		$string = preg_replace("/\bwatch\b/", "Watches", $string);
+		$string = preg_replace("/\bWatchess\b/", "Watches", $string);
+		$string = preg_replace("/\bwatchess\b/", "Watches", $string);
+		$string = preg_replace("/\bWatcheses\b/", "Watches", $string);
+		$string = preg_replace("/\bwatcheses\b/", "Watches", $string);
+		$string = preg_replace("/\bMenss\b/", "Mens", $string);
+		$string = preg_replace("/\bmenss\b/", "Mens", $string);
+		
         return $string;
 }
     private function stripallslashes($string = "") {
@@ -58,8 +68,12 @@ private function spell_correction($string){
         $string = str_replace(')', '\)', $string);
         $string = str_replace('(', '\(', $string);
         $string = str_replace("!", "\!", $string);
+		$string = preg_replace("/\bfor\b/", "", $string);
+		$string = preg_replace("/\bin\b/", "", $string);
+		$string = preg_replace("/\bfrom\b/", "", $string);
+		
         $string=$this->solr->escape($string);
-        $string = urldecode($string);
+        $string = urldecode(trim($string));
         return strip_tags($string);
     }
 private function querySegmentation($queryString =  null){ 
@@ -67,7 +81,8 @@ private function querySegmentation($queryString =  null){
  
 //$queryString = " tops for girls";
 $params=array();
-$params['is_only_facet'] = 'yes';
+$params['is_only_facet']= 'yes';
+$params['querySegmentation']='yes';
 $produt_data = $this->getResults($params);
 $result= (array)json_decode($produt_data);
 $fcat_rootcat=array();
@@ -77,38 +92,48 @@ $fcat_brand=array();
 $fcat_model=array();	   
 foreach($result['facet_data']->root_cat_name_ft as $facetname => $valcount){	
 		
+		
 		array_push($fcat_rootcat, trim(strtolower($facetname)));		
 }
 foreach($result['facet_data']->sub_cat_name_ft as $facetname => $valcount){	
-			
-		array_push($fcat_subcat, trim(strtolower($facetname)));		
+		if(!in_array(strtolower($facetname),$fcat_rootcat)){								
+		  array_push($fcat_subcat, trim(strtolower($facetname)));		
+		}
 }
-foreach($result['facet_data']->leaf_cat_name_ft as $facetname => $valcount){	
-		
-		array_push($fcat_leafcat, trim(strtolower($facetname)));		
+foreach($result['facet_data']->leaf_cat_name_ft as $facetname => $valcount){
+
+		if(!in_array(strtolower($facetname),$this->stripcategorylist)){
+			if(!in_array(strtolower($facetname),$fcat_rootcat)){
+				if(!in_array(strtolower($facetname),$fcat_subcat)){								
+					array_push($fcat_leafcat, trim(strtolower($facetname)));
+				}			
+			}
+		}
 }
+
+/*
 foreach($result['facet_data']->model_ft as $facetname => $valcount){	
 		
 		array_push($fcat_model, trim(strtolower($facetname)));		
-}
+}*/
 foreach($result['facet_data']->brandname_ft as $facetname => $valcount){	
 		
 		array_push($fcat_brand, trim(strtolower($facetname)));		
 }
 		$queryString=$this->spell_correction($queryString);
-    	$strArr = explode(" ", trim(urldecode($queryString)));
+	   	$strArr = explode(" ", trim(urldecode($queryString)));
 		
         $strArr	= array_map('strtolower', $strArr);
 		
 		
 	$j = 0;
+	
 	foreach($strArr as $key=>$value){
 		
 	   $count =  count($strArr) - ($j );
 	   for($i =$count;  $i > 0; $i-- ){
 	        $search_text = implode(" ", array_slice($strArr, $j, $i)); //print $search_text;  print '<br/>';
                 $search_text = rtrim($search_text, ','); // remove malviyaa nager, like error
-				
 				
 	       if( in_array($search_text, $fcat_rootcat) ){
 			   
@@ -127,6 +152,8 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
 	       if( in_array($search_text, $fcat_model) ){
 		      $keywords['model_ft'][]= ucwords($search_text);
 	       }
+		   
+		 
 		   if( in_array($search_text, $fcat_brand) ){
 		      $keywords['brandname_ft'][]= ucwords($search_text);
 	       }
@@ -138,122 +165,157 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
 	
 }
     public function getResults($searchParams = array()) {
-
+		
         try {
-
+	
             if ($this->solr->ping()) {
-
+				$sepllecheckerorgquery='';
+				$searchParams['q']=$this->spell_correction($searchParams['q']);
+				$sepllecheckerorgquery=$searchParams['q'];
                 $this->fq = ' status:1';
-
-                if (isset($searchParams['type']) && !empty($searchParams['type;'])) {
-                    $this->fq.=' AND type:' . intval($searchParams['type;']);
-                } else {
-                    $this->fq.=' AND type:0';
-                }
-
-                
-
+				/*
+					if(!isset($params['querySegmentation'])){
+						$this->fq.=' AND _val_:"scale(quantity,0,1.2)"';
+					}*/
+					
                 if (isset($searchParams['name']) && $searchParams['name'] != '') {
                     $this->fq.=' AND product_name:(' . $this->stripallslashes($searchParams['name']) . ')';
                 }
 
                 if (isset($searchParams['q']) && $searchParams['q'] != '') {
 				
-				
 					
-				 $keywords =  $this->querySegmentation($searchParams['q']);	
+							
+				
+					$query = $this->stripallslashes(urldecode($searchParams['q']));
+                    $searchParams['q'] = implode(' ',array_filter(explode(" ", $query)));
+					$searchParams['filterq']=$searchParams['q'];
+					$keywords ='';
+					$keywords =  $this->querySegmentation($searchParams['q']);	
 					 if(!empty($keywords)){  
 							 
 						if(!empty($keywords['root_cat_name_ft'])){
-							$root_cat_query = array();
-							foreach( $keywords['root_cat_name_ft'] as $key => $cat){ 
-								$root_cat_query[] = "   category:(".$cat.")";
+						$i = 1;
+						if(!empty($keywords['root_cat_name_ft'])){
+							$keyword_query .=' AND (';
+							
+								foreach($keywords['root_cat_name_ft'] as $key => $category){ 
+									if ($i == 1) {
+										//$keyword_query .=' (root_cat_name_ft:"' .$category. '" OR category_all_tight:("'.$category.'") OR category_all:('.$category.'))';
+										$keyword_query .=' (root_cat_name_ft:"' .$category. '") OR (category_all_tight:"' .$category. '") OR category_all:('.$category.')';
+										
+									} else {
+										//$keyword_query .=' OR (root_cat_name_ft:"' .$category. '" OR category_all_tight:("'.$category.'") OR category_all:('.$category.'))';
+										$keyword_query .=' OR (root_cat_name_ft:"' .$category. '") OR category_all:("'.$category.'")';
+									}
+									$i++;
+									$string=strtolower($category);		
+									$searchParams['filterq']=str_replace($string,'', strtolower($searchParams['filterq']));
+									
 								}
-								$keyword_query .= " AND (".implode(" OR ", $root_cat_query)." )" ;
+									
+																
+							
+							$keyword_query .=')';
+							}
 								
 						}
 						if(!empty($keywords['sub_cat_name_ft'])){
-							$scat_query = array() ;  
-							foreach( $keywords['sub_cat_name_ft'] as $key => $category){ 
-							$scat_query[] = "   category:(".$category.")";
+													
+							$i = 1;
+							$keyword_query .=' AND (';
+							foreach($keywords['sub_cat_name_ft'] as $key => $category){ 
+								if ($i == 1) {
+									$keyword_query .=' (sub_cat_name_ft:"' .$category. '") OR category_all:("'.$category.'")';
+								} else {
+									$keyword_query .=' OR (sub_cat_name_ft:"' .$category. '") OR category_all:("'.$category.'")';
+								}
+								$i++;								
+								$string=strtolower($category);		
+								$searchParams['filterq']=str_replace($string,'', strtolower($searchParams['filterq']));
 							}
-							$keyword_query .= " AND (".implode(" OR ", $scat_query)." )" ;
+							$keyword_query .=')';
 							
 						}  
 						if(!empty($keywords['leaf_cat_name_ft'])){
-							$lcat_query = array() ;  
-							foreach( $keywords['leaf_cat_name_ft'] as $key => $category){ 
-							$lcat_query[] = "   category:(".$category.")";
+							$i = 1;
+							$keyword_query .=' AND (';
+							foreach($keywords['leaf_cat_name_ft'] as $key => $category){ 
+								if ($i == 1) {
+									$keyword_query .=' (leaf_cat_name_ft:"' .$category. '") OR category_all:("'.$category.'")';
+								} else {
+									//$keyword_query .=' OR (leaf_cat_name_ft:"' .$category. '") OR category_all:("'.$category.'")';
+								}
+								$i++;								
+								$string=strtolower($category);		
+								$searchParams['filterq']=str_replace($string,'', strtolower($searchParams['filterq']));
 							}
-							/*if(!empty($keywords['sub_cat_name_ft'])){
-								$keyword_query .= " OR (".implode(" OR ", $lcat_query)." )" ;
-							}else{
-								$keyword_query .= " AND (".implode(" OR ", $lcat_query)." )" ;
-							}*/
-							$keyword_query .= " AND (".implode(" OR ", $lcat_query)." )" ;
-							
+							$keyword_query .=')';			
 							
 						} 
 						
 						if(!empty($keywords['brandname_ft']) ){
-							$lcat_query = array() ;  
-							foreach( $keywords['brandname_ft'] as $key => $category){ 
-							$lcat_query[] = "   brandname:(\"".$category."\") ";
+							$i = 1;
+							//$keyword_query .=' AND (';
+							$tempkeyword_query=' OR (';
+							foreach($keywords['brandname_ft'] as $key => $brandname){ 							
+								if ($i == 1) {
+									//$keyword_query .=' brandname:"' .$brandname. '" OR brandname:("'.$brandname.'")';
+									$tempkeyword_query .=' brandname:"' .$brandname.'"';
+								} else {
+									//$keyword_query .=' OR brandname:"' .$brandname. '" OR brandname:("'.$brandname.'")';
+									$tempkeyword_query .=' OR brandname:"' .$brandname. '"';
+								}
+								$i++;								
 							}
-							$keyword_query .= " AND (".implode(" OR ", $lcat_query)." )" ;
+							//$keyword_query .=')';
+							$tempkeyword_query .=')';
+							
 						} 
 						if(!empty($keywords['model_ft'])){
-							$cat_query = array() ;  
-							foreach( $keywords['model_ft'] as $key => $category){ 
-							$cat_query[] = "   model:(\"".$category."\") ";
+							$i = 1;
+							$keyword_query .=' AND (';
+							foreach($keywords['model_ft'] as $key => $model){ 
+								if ($i == 1){
+									$keyword_query .='model_ft:"' .$model. '"';
+								} else {
+									$keyword_query .=' OR model_ft:"' .$model. '"';
+								}
+								$i++;
 							}
-							$keyword_query .= " AND (".implode(" OR ", $cat_query)." )" ;
+							$keyword_query .=')';
+							
 						}   						
                 
 					}	
 					
-                   /* $query = urldecode($searchParams['q']);
-                    $arr = explode(" ", $query);
-                    $tmpQuery = "";
-                    foreach ($arr as $key => $val) {
-
-                        $tmpQuery .= "name_gram2:(\"" . $val . "\")^9988999.7 AND ";
-                    }
-                    $tmpQuery = preg_replace('/( AND )$/', "", $tmpQuery);
-                    $tmpQuery = "(" . $tmpQuery . ")";
-
-                    $query1 = "(name_gram:(\"" . $query . "\")^9988999.9 OR " . $tmpQuery;
-                    $query1 .= " )";
-
-
-                    
-
-                  
-				  
-
-					$this->fq.=' AND (' . $query1;*/
-					
-					
-					$this->fq.=' AND (nametight:(' . $this->stripallslashes($searchParams['q']) . ')^99.9';
-					$this->fq.=' OR product_name:(' . $this->stripallslashes($searchParams['q']) . ')^1.4';
-									
-					//$this->fq.=' OR model:('.$this->stripallslashes($searchParams['q']).')';		
-					//$this->fq.=' OR brandname:('.$this->stripallslashes($searchParams['q']).')';
-					//$this->fq.=' OR (root_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
-					//$this->fq.=' OR (sub_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
-					//$this->fq.=' OR (leaf_cat_name:('.$this->stripallslashes(rtrim($searchParams['q'])).'))';
-					$this->fq.=' OR tag:(' . $this->stripallslashes($searchParams['q']) . ')';
-					$this->fq.=' OR filter_list:(' . $this->stripallslashes($searchParams['q']) . ')';
-					$this->fq.=' OR attribute_list:(' . $this->stripallslashes($searchParams['q']) . ')';
-					
-					
-					$this->fq.=' )';
+						if($this->stripallslashes(trim($searchParams['q']))!="" && !empty($this->stripallslashes(trim($searchParams['q'])))){
+						if(isset($searchParams['filterq']) && !empty(trim($searchParams['filterq'])) && $searchParams['filterq']!=''){
+							$this->fq.=' AND (product_name:(' . $this->stripallslashes($searchParams['filterq']) . ')^9999999.4';
+							$this->fq.=' OR product_name:(' . $this->stripallslashes($searchParams['q']) . ')^99999.4';
+						}else{
+							$this->fq.=' AND (product_name:(' . $this->stripallslashes($searchParams['q']) . ')^99999.4';
+						}
+						//$this->fq.=' AND (nametight:(' . $this->stripallslashes($searchParams['q']) . ')^9199.9';
+						
+						$this->fq.=' OR name_rev:(' . $this->stripallslashes($searchParams['q']) . ')^999999.4';
+						//$this->fq.=' OR spellcheckitems:(' . $this->stripallslashes($searchParams['q']) . ')^999.4';
+						
+						//$this->fq.=' OR brandname:('.$this->stripallslashes($searchParams['q']).')';
+						$this->fq.=' OR tag:("' . $this->stripallslashes($searchParams['q']) . '")^999999.8';
+						$this->fq.=' OR filter_list_all:("' . $this->stripallslashes($searchParams['q']) . '")';
+						$this->fq.=' OR attribute_list_all:("' . $this->stripallslashes($searchParams['q']) . '")^927.9';
+						$this->fq.=' OR category_all:('.$this->stripallslashes($searchParams['q']).')';
+						//$this->fq.=' OR color:('.$this->stripallslashes($searchParams['q']).')^9.999';
+						$this->fq.=$tempkeyword_query;
+						$this->fq.=' )';
+					}
 				
 				
 					
 					
-					$this->fq.= $keyword_query ? $keyword_query : ''; 
-					
+					 $this->fq.= $keyword_query ? $keyword_query : ''; 
+					 
                 }
 			
                 if (isset($searchParams['product_ids']) && !empty($searchParams['product_ids'])) {
@@ -332,15 +394,37 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
 
                 if (isset($searchParams['price_range']) && !empty($searchParams['price_range'])) {
                     list($minp, $maxp) = explode("-", $searchParams['price_range']);
-                    if ($minp > 0 && $maxp > 0) {
-                        $this->fq.=' AND (selling_price:[' . $minp . ' TO ' . $maxp . '])';
+                    if ($minp > 0 && ($maxp > 0 || $maxp=='Above')) {
+						if($maxp=='Above'){
+							$this->fq.=' AND (selling_price:[' . $minp . ' TO *])';
+						}else{
+							$this->fq.=' AND (selling_price:[' . $minp . ' TO ' . $maxp . '])';
+						}
                     } else {
                         $this->fq.=' AND (selling_price:[0 TO ' . $searchParams['price_range'] . '])';
                     }
                 }
-        
-
-
+				
+				 if (isset($searchParams['stock_status']) && !empty($searchParams['stock_status'])) {
+                    $this->fq.=' AND stock_status:"' .$this->stripallslashes($searchParams['stock_status']).'"';
+                }
+				if (isset($searchParams['attribute']) && !empty($searchParams['attribute'])) {
+                    $this->fq.=' AND attribute_list_all:("' .$this->stripallslashes($searchParams['attribute']).'")';
+                }
+				if (isset($searchParams['size']) && !empty($searchParams['size'])) {
+                    $this->fq.=' AND size_ft:("' .$this->stripallslashes($searchParams['size']).'")';
+                }
+				if (isset($searchParams['filter']) && !empty($searchParams['filter'])) {
+                    $this->fq.=' AND filter_list_all:("' .$this->stripallslashes($searchParams['filter']).'")';
+                }
+				if (isset($searchParams['type']) && trim($searchParams['type'])>0) {					
+                    $this->fq.=' AND type:1';
+                } else {
+					if(!isset($searchParams['querySegmentation'])){
+						$this->fq.=' AND type:0';
+					}
+                }
+				
                 if (isset($searchParams["limit"]) && $searchParams["limit"] != "") {
                     $this->limit = $searchParams["limit"];
                 } else {
@@ -358,12 +442,13 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
                     $this->start = 0;
                     $this->limit = 0;
                     $this->is_facet = 'true';
+					
                 } else if (isset($searchParams['is_with_facet']) && $searchParams['is_with_facet'] == 'yes') {
                     $this->is_facet = 'true';
+					//$this->fq.=' AND _val_:"scale(quantity,0,999.9)"';
+					
                 }
 
-
-				
                 if (isset($searchParams['sort']) && !empty($searchParams['sort'])) {
 					
 					if(isset($searchParams['orderby']) && !empty($searchParams['orderby'])) {
@@ -377,21 +462,24 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
 					}
                 
 				
-                    if ($searchParams['sort'] == 'price') {
-                        $this->sorting_field = 'selling_price ' . $this->sorting_order;
+                    if ($searchParams['sort']== 'price') {
+                        $this->sorting_field ='out_of_stock desc, selling_price ' . $this->sorting_order;
                     }
-					if ($searchParams['sort'] == 'percentage') {
-                        $this->sorting_field = 'discount_price ' . $this->sorting_order;
+					if ($searchParams['sort']=='percentage') {
+                        $this->sorting_field='out_of_stock desc, discount_price ' . $this->sorting_order;
                     }
-					if ($searchParams['sort'] == 'product_id') {
-                        $this->sorting_field = 'product_id ' . $this->sorting_order;
-                    }
-					
-					if ($searchParams['sort'] == 'name') {
-                        $this->sorting_field = 'product_name_ft ' . $this->sorting_order;
+					if ($searchParams['sort']=='product_id') {
+                        $this->sorting_field='out_of_stock desc, product_id ' . $this->sorting_order;
                     }
 					
-                }
+					if ($searchParams['sort']=='name') {
+                        $this->sorting_field='out_of_stock desc,product_name_ft ' . $this->sorting_order;
+                    }
+					
+                }else{
+					$this->sorting_order='desc';
+					$this->sorting_field = 'out_of_stock desc,score desc';
+				}
 
                 if (!empty($this->sorting_field) && !empty($this->sorting_order)) {
                     $this->params['sort'] = $this->sorting_field;
@@ -401,17 +489,26 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
                 if (isset($searchParams['return_field']) && !empty($searchParams['return_field'])) {
                     $this->params['fl'] = $searchParams['return_field'];
                 } else {
-                    $this->params['fl'] = '*';
+                   // $this->params['fl'] = 'product_id,product_name,model,brand_id,sku,upc,ean,business_model,return_ploicy,location,quantity,vendor_id,brandname,root_cat_id,root_cat_name,sub_cat_id,sub_cat_name,leaf_cat_id,leaf_cat_name,category,attribute_list,filter_list,image,color,shipping,transfer_price,points,tax_class_id,weight,weight_class_id,length,width,height,length_class_id,shipment_mode,subtract,minimum,status';
+					 $this->params['fl'] ='*';
                 }
-
 
                 if (isset($this->is_facet) && $this->is_facet == 'true') {
                     $this->params['facet'] = $this->is_facet;
-                    $this->params['facet.field'] = array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft','selling_price','model_ft','brandname_ft','offers_ft','color_ft');
-					$this->params['facet.query'] =array('selling_price:[1 TO 500]','selling_price:[500 TO 1000]','selling_price:[1000 TO 1500]','selling_price:[1500 TO 2000]','selling_price:[2000 TO *]');
-					$this->params['facet.pivot'] ='root_cat_name_ft,sub_cat_name_ft,leaf_cat_name_ft';
-					
-                    $this->params['facet.limit'] = '100';
+					if(isset($searchParams['querySegmentation']) && $searchParams['querySegmentation']=='yes'){						
+						$this->params['facet.field'] = array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft','brandname_ft');
+						 $this->params['facet.limit'] = '5000';				
+						
+					}else{
+						
+						//$this->params['facet.field'] = array('root_cat_name_ft','sub_cat_name_ft','leaf_cat_name_ft','selling_price','brandname_ft','offers_ft','color_ft','size_ft','stock_status','attribute_list_ft');
+						$this->params['facet.field'] = array('brandname_ft','offers_ft','color_ft','size_ft','stock_status','attribute_list_ft','category_path_desc','filter_list_ft');
+						$this->params['facet.query'] =array('selling_price:[1 TO 500]','selling_price:[500 TO 1000]','selling_price:[1000 TO 1500]','selling_price:[1500 TO 2000]','selling_price:[2000 TO *]');
+						$this->params['facet.pivot'] ='root_cat_name_ft,sub_cat_name_ft,leaf_cat_name_ft';
+						 $this->params['facet.limit'] = '100';
+					}
+					  
+                  
                     if (isset($searchParams['only_facet_sort']) && $searchParams['only_facet_sort'] == 'true') {
                         $this->params['facet.mincount'] = '1';
                         $this->params['facet.sort'] = 'false';
@@ -425,20 +522,19 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
                     $this->params['stats'] = 'true';
                     $this->params['stats.field'] = 'cat_parent_id';
                 }
-				
-                $this->result = $this->solr->search(htmlspecialchars_decode(urldecode($this->fq)), $this->start, $this->limit, $this->params);
-
+		
+		
+				$this->result = $this->solr->search(htmlspecialchars_decode(urldecode($this->fq)), $this->start, $this->limit, $this->params);
                 $this->found = $this->result->response->numFound;
 								
 		if($this->found==0){
-			if($searchParams['q']!=''){
+			if($sepllecheckerorgquery!=''){
 				
 				$this->spellparams['spellcheck']='true';
 				$this->spellparams['spellcheck.collate']='true';
 				$this->spellparams['spellcheck.build']='true';
-				$spellq=$searchParams['q'];
+				$spellq=$sepllecheckerorgquery;
 				$splelresult=array();
-				
 				$splelresult= $this->solr->spellsearch(htmlspecialchars_decode(urldecode($spellq)), 0, 3, $this->spellparams);
 				$spellcount=0;
 				if(isset($splelresult->spellcheck->suggestions[1])){
@@ -453,7 +549,19 @@ foreach($result['facet_data']->brandname_ft as $facetname => $valcount){
 					if($splelresult->spellcheck->suggestions[5]->suggestion[0]->word!=''){
 						$spellsearchname.=" ".$splelresult->spellcheck->suggestions[5]->suggestion[0]->word;
 					}
-					$this->fq=' (product_name:('.$spellsearchname.')^99999)';	
+					$this->fq=' (product_name:('.$spellsearchname.')^99999';
+					$this->fq.=' OR nametight:(' . $spellsearchname . ')^9199.9';
+					$this->fq.=' OR category_all_tight:('.$this->stripallslashes($spellsearchname).')';
+					$this->fq.=' OR category_all:('.$this->stripallslashes($spellsearchname).'))';
+					if (isset($searchParams['type']) && trim($searchParams['type'])>0) {					
+						$this->fq.=' AND type:1';
+					} else {
+						if(!isset($searchParams['querySegmentation'])){
+							$this->fq.=' AND type:0';
+						}
+                }
+				
+				
 					$this->result = $this->solr->search(htmlspecialchars_decode(urldecode($this->fq)), $this->start, $this->limit, $this->params);
 
 					$this->found = $this->result->response->numFound;
