@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__FILE__) . '/solr/cacheLayer.php';
+require_once dirname(__FILE__) . '/save_search.php';
 
 $ttl = 1800; // 30 minutes
 $redisObj = cacheFactory::create_cache();
@@ -39,11 +39,21 @@ $redisObj->incrementHashData($incrementHashkey, $key, 1, 0);    /// increment va
 */
 
 // set list
-$listKey = "mylist";
-$data = array('keyword' => 'wachs', 'date_added' => '2017-01-11 09:17:22');
-$redisObj->rPushListData($listKey, $data);
+//$listKey = date('Ymd');
+//$data = serialize(array('keyword' => 'wachs', 'date_added' => '2017-01-11 09:17:22'));
+saveToNosql("this is test data");
 
-//get list
-$listKey = "mylist";
-$redisObj->lPopList($listKey);
+
+//get saved searches
+$listKey = date('Ymd');
+while( 1 ){
+    $searchData = readFromNosql($listKey);
+    if( !$searchData ){
+        break;
+    }
+    // insert data into db
+    echo $searchData['keyword'];
+    echo $searchData['date_added'];
+
+}
 ?>

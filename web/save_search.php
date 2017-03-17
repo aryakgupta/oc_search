@@ -12,3 +12,12 @@ function saveToNosql($search=''){
         $redisObj->rPushListData($listKey, $data);
     }
 }
+
+
+function readFromNosql($listKey=''){
+    if( !$listKey ){    // fetch saved searches of today
+        $listKey = date('Ymd');
+    }
+    $redisObj = cacheFactory::create_cache();
+    return unserialize($redisObj->lPopList($listKey));
+}

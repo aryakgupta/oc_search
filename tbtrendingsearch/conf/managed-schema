@@ -460,6 +460,7 @@
   <field name="name1" type="prefix_full" multiValued="false" indexed="true" stored="true" omitNorms="true"/>
   <field name="name2" type="prefix_token" multiValued="false" indexed="true" stored="true" omitNorms="true"/>
   <field name="popularity" type="tint" indexed="true" stored="true"/>
+  <field name="type" type="tint" indexed="true" stored="true" default="0"/>
   <field name="spellcheckitems" type="text_general" multiValued="true" indexed="true" stored="false" omitNorms="true" termVectors="true"/>
   <copyField source="name1" dest="spellcheckitems"/>
 </schema>

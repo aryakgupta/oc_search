@@ -1,37 +1,24 @@
 <?php
-error_reporting(1);
+error_reporting(0);
 set_time_limit(0);
-//ob_start();
-//header('Content-Type: application/json');
-
-// decide to run on the basis of individual product basis or do auto indexing on the basis of limit
-function updateProducts($prodid=array()){
-    $prodid =  implode(',', $prodid) ;
-    $start = 0;
-    $end = 15000;
-    autoIndex($prodid, $start, $end);
-}
-
-function autoIndex($prodid='', $start=0, $end=1){
+ob_start();
+header('Content-Type: application/json');
 try{
-$autopush = 0;
-$pushlimit = 15000;
-$showTime = 1;
+$autopush = 1;
+$pushlimit = 2000;
 ini_set('memory_limit','1024M');
-
+if( $autopush ){
+	//require_once 'solr/solr_operations.php';
+      //  $solrObj = new solrCRUD();
+}
+//define('DB_PREFIX', 'oc');
 $prodid = '';
 if($_GET['prod']){ $prodid = $_GET['prod']; }
-   require_once('new_config.php'); 
-  /* @mysql_connect(DB_HOSTNAME,DB_USERNAME,DB_PASSWORD);
-   @mysql_select_db(DB_DATABASE);
-*/
-//require_once('config.php');
+require_once('config.php'); 
    @mysql_connect(DB_HOSTNAME,DB_USERNAME,DB_PASSWORD);
    @mysql_select_db(DB_DATABASE);
-
-
 $start = isset($_GET['start']) ? $_GET['start'] : 0;
-$end = isset($_GET['end']) ? $_GET['end'] : 20000; 
+$end = isset($_GET['end']) ? $_GET['end'] : 50; 
 if(isset($argv['1']) && !empty( $argv['1'])){	  
 	$start=intval($argv['1']);     
 }
@@ -39,6 +26,77 @@ if(isset($argv['1']) && !empty( $argv['1'])){
 if(isset($argv['2']) && !empty( $argv['2'])){	  
 	$end=intval($argv['2']);  
 }	
+	
+//$start = $page*$end;
+
+/*$qqqqqq="SELECT DISTINCT
+    *,
+    pd.name AS name,
+    p.image,
+    (SELECT 
+            price
+        FROM
+            oc_product_discount pd2
+        WHERE
+            pd2.product_id = p.product_id
+            
+               
+        ORDER BY pd2.priority ASC , pd2.price ASC
+        LIMIT 1) AS discount,
+
+     (SELECT 
+            brand_name
+        FROM
+            oc_brand b
+        WHERE
+            b.brand_id = p.brand_id
+            
+        LIMIT 1) AS brandname,
+    (SELECT 
+            price
+        FROM
+            oc_product_special ps
+        WHERE
+            ps.product_id = p.product_id
+                AND ps.customer_group_id = '1'
+                
+        ORDER BY ps.priority ASC , ps.price ASC
+        LIMIT 1) AS special,
+    (SELECT 
+            ss.name
+        FROM
+            oc_stock_status ss
+        WHERE
+            ss.stock_status_id = p.stock_status_id
+                AND ss.language_id = '1') AS stock_status,
+    (SELECT 
+            wcd.unit
+        FROM
+            oc_weight_class_description wcd
+        WHERE
+            p.weight_class_id = wcd.weight_class_id
+                AND wcd.language_id = '1') AS weight_class,
+    (SELECT 
+            lcd.unit
+        FROM
+            oc_length_class_description lcd
+        WHERE
+            p.length_class_id = lcd.length_class_id
+                AND lcd.language_id = '1') AS length_class,
+    p.sort_order
+FROM
+    oc_product p
+        LEFT JOIN
+    oc_product_description pd ON (p.product_id = pd.product_id)
+
+        
+WHERE
+    p.status = '1' ";
+if( trim($prodid) != '' ){ $qqqqqq .= " and p.product_id in ($prodid)"; }
+else{
+   $qqqqqq.=" ORDER BY p.product_id DESC LIMIT $start, $end"; 
+}
+*/
 $qqqqqq="SELECT
     *,
     pd.name AS name,
@@ -106,23 +164,14 @@ if( !empty($prodid)){ $qqqqqq .= " and p.product_id in ($prodid)"; }
 else{
    $qqqqqq.=" ORDER BY p.product_id DESC LIMIT $start, $end"; 
 }
-//echo $qqqqqq;die;
-$time_start = microtime(true);
-
    $qqq1=mysql_query($qqqqqq);
    $master=array();
    $i=0;
-
-   if( $showTime ){
-      echo 'time taken in main query execution::'.$time_elapseid_secs = microtime(true) - $time_start;
-   }
+   $time_start = microtime(true);
    while($rs=mysql_fetch_assoc($qqq1))
    {
     try{
-    $time_start = microtime(true);
-
     $master[$i]['product_id']=$rs['product_id'];
-    $master[$i]['product_path']=productUrlAlias($rs['product_id']);
     $master[$i]['model']=$rs['model'];
     $master[$i]['brand_id']=$rs['brand_id'];
     
@@ -186,70 +235,44 @@ $time_start = microtime(true);
     
     $master[$i]['discount_price']=$rs['discount'];
     $master[$i]['selling_price']=$rs['special'];
-
-    $percentagediscount='';
-    if($rs['price']&& $rs['special'])
-    {
-      if($rs['price'] >$rs['special'] || $rs['price'] != $rs['special']){
-      $percentagediscount= floor((($rs['price']-$rs['special'])/$rs['price'])*100);
-                  }
-      if(!empty($rs['discount']))
-               {
-                 if($rs['price'] > $rs['discount'] || $rs['price'] != $rs['discount']){
-                  $percentagediscount= ceil((($rs['price']-$rs['discount'])/$rs['price'])*100);
-               }
-    } 
-  }
-  
-    $master[$i]['percentagediscount']=$percentagediscount;
      
     $master[$i]['stock_status']=$rs['stock_status'];
     $master[$i]['weight_class']=$rs['weight_class'];
     $master[$i]['length_class']=$rs['length_class'];
-    $master[$i]['size_chart']=getSizeChart($rs['product_id']);
-
-/*    if( $i>=$pushlimit && $autopush ){
-        //$data=$obj->indexIntoSolr($master);
-        //create(json_encode($master));
-        if($showTime){
-           $time_elapsed_secs = microtime(true) - $time_start;
-           echo "row processing time taken:: $i ::".$time_elapsed_secs;
-           $time_start = microtime(true);
-        }
-        $master = array();
-        $i = 0;
-    }*/
-
     $i++;
     }catch(Exception $e) {
         echo 'Caught exception: ',  $e->getMessage(), "\n";
     }
 
    }
-    
-    /*    if($showTime){
-           $time_elapsed_secs = microtime(true) - $time_start;
-           echo "row processing time taken:: $i ::".$time_elapsed_secs;
-           $time_start = microtime(true);
-        }
-*/
-	include_once(dirname(__FILE__)."/solr/classes/BharatSolrDataImport.class.php");
-        $obj=new BharatSolrDataImport();
-        if(is_array($master) || is_object($master)){
-            $data=$obj->indexIntoSolr($master);
-	    print_r($data);
-            echo $master[$i-1]['product_id'];
-        }
+	
+		//echo dirname(__FILE__)."/solr/classes/TBharatSolrAutoImport.class.php";
+		include_once(dirname(__FILE__)."/solr/classes/TBharatSolrAutoImport.class.php");
+		$objauto=new TBharatSolrAutoImport();
 
-       if($showTime){
-           $time_elapsed_secs = microtime(true) - $time_start;
-           echo "solr processing time taken:: $i ::".$time_elapsed_secs;
-       }
+	
+	if (is_array($master) || is_object($master))
+	{
+		echo "coming";
+		$data=$objauto->index_auto_produt($master);
+		print_r($data);
+		$data2=$objauto->index_auto_brand($master);
+		$data3=$objauto->index_auto_module($master);
+		
+		
+	}
+		
+
+	
+	
+
+
+
 
 }catch(Exception $e) {
         echo 'Caught exception: ',  $e->getMessage(), "\n";exit;
 }
-}
+
 
  function getProductImages($product_id) {
   $imagedata=array();
@@ -423,25 +446,15 @@ function  product_filter($product_id)
               foreach($path as $key=>$val)
               {
                    $rs=explode('-', $val);
-                   if($y==0){
-                    $root_cat_id='root_cat_id';
-                    $catname='root_cat_name'; 
-                    $caturl='root_cat_url';
-                   }else{ 
-                    $root_cat_id='sub_cat_id'; 
-                    $catname='sub_cat_name';
-                    $caturl='sub_cat_url';
-                  }
+                   if($y==0){ $root_cat_id='root_cat_id'; $catname='root_cat_name';}else{ $root_cat_id='sub_cat_id'; $catname='sub_cat_name';}
                    //if($y==0){ $root_cat_id='root_cat_id'; $catname='sub_cat_name';}else{ $root_cat_id='sub_cat_id'; $catname='sub_cat_name';}
 
                    $product_categories[$root_cat_id]=$rs['1'];
                    $product_categories[$catname]=$rs['0'];
-                  $product_categories[$caturl]=categoryUrlAlias($rs['1']);
                   $y++;
               }
               $product_categories['leaf_cat_id']=$category_info['category_id'];
               $product_categories['leaf_cat_name']=$category_info['name'];
-              $product_categories['leaf_cat_url']=categoryUrlAlias($category_info['category_id']);
               $arr[] = $product_categories;
          }else{
               
@@ -556,44 +569,11 @@ function categoryname($catid)
   
 }
 
-function productUrlAlias($proid)
-{
- $urlq ="SELECT keyword FROM `oc_url_alias` WHERE query = 'product_id=".$proid."'";
- $urlq = mysql_query($urlq);
- $row=mysql_fetch_assoc($urlq);
-
- return $row['keyword'];
-}
-
-function categoryUrlAlias($catid)
-{
- $urlq ="SELECT keyword FROM `oc_url_alias` WHERE query = 'category_id=".$catid."'";
- $urlq = mysql_query($urlq);
- $row=mysql_fetch_assoc($urlq);
-
- return $row['keyword'];
-}
-
-function getSizeChart($product_id)
-    {
-        $sql = "SELECT  c.* FROM " . DB_PREFIX . "size_chart_values c JOIN " . DB_PREFIX . "size_chart_option o ON(c.template_id = o.template_id) WHERE o.product_id = '" . $product_id . "'";        
-        $query = mysql_query($sql);
-
-        $count = mysql_num_rows($query);
-        $sizechart = array();
-
-      if($count > 0)
-      {
-        $sizechart = mysql_fetch_assoc($query);
-      }
-       return $sizechart;
-    }
 
 
-
-echo '<pre>';
-print_r($master);
-// //echo json_encode($master);
+//echo '<pre>';
+//print_r($master);
+//echo json_encode($master);
 
 
    

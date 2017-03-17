@@ -456,6 +456,8 @@
   <field name="_root_" type="string" indexed="true" stored="false" docValues="false"/>
   <field name="_version_" type="long" indexed="true" stored="true"/>
 <field name="attribute_list" type="text_general" multiValued="false" indexed="true" stored="true"/>
+<field name="attribute_list_all" type="text_general" multiValued="true" indexed="true" stored="true"/>
+<field name="attribute_list_ft" type="string" multiValued="true" indexed="true" stored="true"/>
 
   <field name="brand_id" type="int" indexed="true" stored="true"/>
   <field name="brandname" type="text_general" indexed="true" stored="true"/>
@@ -463,6 +465,8 @@
   <field name="business_model" type="text_general" indexed="true" stored="true"/>
   <field name="business_model_ft" type="string" indexed="true" stored="true"/>
   <field name="category" type="text_general" multiValued="false" indexed="true" stored="true"/>
+  <field name="category_all_tight" type="text_en_splitting" multiValued="true" indexed="true" stored="true"/>
+  <field name="category_all" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="color" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="color_ft" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="date_available" type="date" indexed="true" stored="true"/>
@@ -471,6 +475,8 @@
   <field name="discount_price" type="float" indexed="true" stored="true"/>
   <field name="ean" type="text_general" indexed="true" stored="true"/>
 <field name="filter_list" type="text_general" multiValued="false" indexed="true" stored="true"/>
+<field name="filter_list_ft" type="string" multiValued="true" indexed="true" stored="true"/>
+<field name="filter_list_all" type="text_general" multiValued="true" indexed="true" stored="true"/>
 
   <field name="height" type="string" indexed="false" stored="true"/>
   <field name="hs_code" type="string" indexed="true" stored="true"/>
@@ -493,11 +499,16 @@
   <field name="mrp" type="float" indexed="true" stored="true"/>
   <field name="name_gram" type="prefix_full" multiValued="false" indexed="true" stored="true" omitNorms="true"/>
   <field name="name_gram2" type="prefix_token" multiValued="false" indexed="true" stored="true" omitNorms="true"/>
+  <field name="name_gramcat" type="prefix_full" multiValued="true" indexed="true" stored="true" omitNorms="true"/>
+  <field name="name_gramcat2" type="prefix_token" multiValued="true" indexed="true" stored="true" omitNorms="true"/>
+
   <field name="name_rev" type="text_general_rev" indexed="true" stored="false"/>
   <field name="nametight" type="text_en_splitting" indexed="true"/>
   <field name="offers" type="text_general" indexed="true" stored="true"/>
   <field name="offers_ft" type="string" indexed="true" stored="true"/>
 <field name="option_list" type="text_general" multiValued="false" indexed="true" stored="true"/>
+<field name="option_list_all" type="text_general" multiValued="true" indexed="true" stored="true"/>
+<field name="option_list_ft" type="string" multiValued="true" indexed="true" stored="true"/>
 
   <field name="points" type="string" indexed="true" stored="true"/>
   <field name="product_for_id" type="int" indexed="true" stored="true"/>
@@ -525,6 +536,9 @@
   <field name="sub_cat_id" type="int" multiValued="true" indexed="true" stored="true"/>
   <field name="sub_cat_name" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="sub_cat_name_ft" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="category_path_asc" type="ancestor_path" multiValued="true" indexed="true" stored="true"/>
+  <field name="category_path_desc" type="descendent_path" multiValued="true" indexed="true" stored="true"/>
+  <field name="category_path_ft" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="subtract" type="string" indexed="true" stored="true"/>
   <field name="tag" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="tax_class_id" type="int" indexed="false" stored="true"/>
@@ -539,13 +553,29 @@
   <field name="weight_class" type="string" indexed="false" stored="true"/>
   <field name="weight_class_id" type="int" indexed="false" stored="true"/>
   <field name="width" type="string" indexed="false" stored="true"/>
+ <field name="out_of_stock" type="tint" indexed="true" stored="true"/>
   <copyField source="brandname" dest="spellcheckitems"/>
-  <copyField source="brandname" dest="text"/>
-  <copyField source="model" dest="text"/>
-  <copyField source="product_name" dest="name_gram"/>
-  <copyField source="product_name" dest="name_gram2"/>
-  <copyField source="product_name" dest="nametight"/>
-  <copyField source="product_name" dest="spellcheckitems"/>
-  <copyField source="product_name" dest="text"/>
- <copyField source="product_name" dest="product_name_ft"/>
+<copyField source="root_cat_name" dest="spellcheckitems"/>
+<copyField source="sub_cat_name" dest="spellcheckitems"/>
+<copyField source="leaf_cat_name" dest="spellcheckitems"/>
+<copyField source="root_cat_name" dest="category_all"/>
+<copyField source="sub_cat_name" dest="category_all"/>
+<copyField source="leaf_cat_name" dest="category_all"/>
+<copyField source="root_cat_name" dest="category_all_tight"/>
+<copyField source="sub_cat_name" dest="category_all_tight"/>
+<copyField source="leaf_cat_name" dest="category_all_tight"/>
+<copyField source="root_cat_name" dest="name_gramcat"/>
+<copyField source="root_cat_name" dest="name_gramcat2"/>
+<copyField source="sub_cat_name" dest="name_gramcat"/>
+<copyField source="sub_cat_name" dest="name_gramcat2"/>
+<copyField source="leaf_cat_name" dest="name_gramcat"/>
+<copyField source="leaf_cat_name" dest="name_gramcat2"/>
+<copyField source="brandname" dest="text"/>
+<copyField source="root_cat_name" dest="text"/>
+<copyField source="product_name" dest="name_gram"/>
+<copyField source="product_name" dest="name_gram2"/>
+<copyField source="product_name" dest="nametight"/>
+<copyField source="product_name" dest="spellcheckitems"/>
+<copyField source="product_name" dest="text"/>
+<copyField source="product_name" dest="product_name_ft"/>
 </schema>

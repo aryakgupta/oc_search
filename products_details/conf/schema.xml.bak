@@ -79,7 +79,7 @@
 	<field name="discount_price" type="float" indexed="true" stored="true"/>
 	<field name="mrp" type="float" indexed="true" stored="true"/>
 	
-	
+ <field name="out_of_stock" type="tint" indexed="true" stored="true"/>	
 	
 	<field name="weight_class" type="string" indexed="false" stored="true"/>
 	<field name="length_class" type="string" indexed="false" stored="true"/>
@@ -90,7 +90,8 @@
 	<field name="spellcheckitems" type="text_general" indexed="true" stored="false" multiValued="true" omitNorms="true" termVectors="true"/>
 	<field name="name_gram" type="prefix_full" indexed="true" stored="true" multiValued="false" omitNorms="true"/>
 	<field name="name_gram2" type="prefix_token" indexed="true" stored="true" omitNorms="true" multiValued="false"/>
-
+	<field name="catname_gram" type="prefix_full" indexed="true" stored="true" multiValued="true" omitNorms="true"/>
+	<field name="catname_gram" type="prefix_full" indexed="true" stored="true" multiValued="true" omitNorms="true"/>
  <uniqueKey>product_unique_id</uniqueKey>
  <defaultSearchField>product_name</defaultSearchField>
 <copyField source="product_name" dest="spellcheckitems"/>
